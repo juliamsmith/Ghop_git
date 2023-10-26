@@ -96,6 +96,43 @@ ggplot(wsdzoom %>% filter(clim_var=="T_soil"), aes(x=dt, y=value, col=site)) + g
 
 #write_csv(wsdzoom, "zoomwsmidAug.csv")
 
+
+#let's compare climate data coverage to behavioral observations
+setwd("G:/Shared drives/RoL_FitnessConstraints/projects/TbandObs2023")
+obs <- read.csv("logs3.csv")
+
+obs <- obs %>% mutate(t=as.POSIXct(strptime(sub(".*at ", "", Date.Created), "%I:%M:%S %p"))+60*60, 
+                      dt=as.POSIXct(sub("at", "", Date.Created),format="%b %d- %Y %I:%M:%S %p", tz="MST") + 60*60)
+
+obs <- obs %>% mutate(Site=case_when(
+  Elevation>1000 & Elevation < 2100 ~ "Eldo",
+  Elevation>2100 & Elevation < 2400 ~"A1",
+  Elevation>2400 & Elevation < 2700 ~ "B1",
+  Elevation>2700 ~ "C1"
+))
+
+obs2023 <- obs %>% filter(as.numeric(format(obs$dt, "%Y"))==2023) %>% mutate(date=as.Date(dt))
+
+obs2 <- read_csv("extralogs.csv")
+
+obs2 <- obs2 %>% mutate(date=as.Date(date, "%m/%d/%Y"))
+
+obs2023plus <- rbind(obs2023 %>% select(Tag, Content, t, date, Site), obs2)
+
+cages <- obs2023 %>% filter(Tag=="Ghop") 
+
+
+new_cages <- cages %>% mutate(cage=as.numeric(str_remove(str_remove(substr(Content, 1, 3), "[a-zA-Z]"), " "))) %>% filter(!is.na(Site) & !is.na(cage))
+
+covws <- wsd_less %>% mutate(v=ifelse(site=="C1", .75, ifelse(site=="B1", .5, .25))) %>% select(dt, site, v)
+covnc <- new_cages %>% select(Site, dt) %>% mutate(site=Site) %>% mutate(v=ifelse(site=="C1", .7, ifelse(site=="B1", .45, .2))) %>% select(-Site)
+
+cov <- rbind(covws, covnc)
+
+ggplot(cov, aes(x=dt, y=v, color=site)) + geom_point() #note lower values of same color are obs
+
+
+
 ##these were from before
 # ggplot(wsd_less_t %>% filter(dt>as.Date("7/12/2023 16:42", format="%m/%d/%Y %H:%M") & dt<as.Date("7/13/2023 16:42", format="%m/%d/%Y %H:%M")), aes(x=dt, y=temp, col=height_m)) + geom_line()
 # 
