@@ -80,7 +80,7 @@ ggplot(wsd_less_t %>% filter(clim_var=="T_0.25"), aes(x=dt, y=value, col=site)) 
 ggplot(wsd_less %>% mutate(v=ifelse(site=="C1", .75, ifelse(site=="B1", .5, .25))), aes(x=dt, y=v, color=site)) + geom_point()
 
 #let's zero in on a location of overlap of coverage at all sites: mid-august 
-wsdzoom <- wsd_less_t %>% filter(dt>as.Date("8/11/2023 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("8/18/2023 12:21", format="%m/%d/%Y %H:%M"))
+wsdzoom <- wsd_less_t %>% filter(as.Date(dt, format="%m/%d/%Y %H:%M")>as.Date("8/11/2023 16:30", format="%m/%d/%Y %H:%M") & as.Date(dt, format="%m/%d/%Y %H:%M")<as.Date("8/18/2023 12:21", format="%m/%d/%Y %H:%M"))
 
 #solar radiation
 ggplot(wsdzoom %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
@@ -93,9 +93,14 @@ ggplot(wsdzoom %>% filter(clim_var=="ws"), aes(x=dt, y=value, col=site)) + geom_
 
 #soil temp
 ggplot(wsdzoom %>% filter(clim_var=="T_soil"), aes(x=dt, y=value, col=site)) + geom_line() + ylab("soil temp")
+wz <- wsdzoom %>% filter(clim_var=="sr")
+#write_csv(wsdzoom, "zoomwsmidAug.csv") #this seems to lead to issues
 
-#write_csv(wsdzoom, "zoomwsmidAug.csv")
+saveRDS(wsdzoom, file = "biophys/zoomwsmidAug.RDS") 
 
+
+save()
+load("stuff.RData")
 
 #let's compare climate data coverage to behavioral observations
 setwd("G:/Shared drives/RoL_FitnessConstraints/projects/TbandObs2023")
