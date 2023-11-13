@@ -70,7 +70,7 @@ wsdtb_s <- wsdzoom_s2 %>% rowwise() %>%
     K_t=.7, #clearness index (???)... needs work, but for now just guessing
     psi=get_psi(dt, site), #solar zenith angle... needs work
     l=.03, #grasshopper length, rn just guessing 3cm and not varying
-    Acondfact=0 #0.25 -> 0 made a huge difference... but at 0 sr takes over and get really hot tbs
+    Acondfact=.05 #0.25 -> 0 made a huge difference... but at 0 sr takes over and get really hot tbs
   )) #%>% #note -- many more warnings if Acond=0
   # mutate(Tb_pred0.50=Tb_grasshopper(
   #   T_a=air_temp_profile_neutral(T_r = T_0.50,
