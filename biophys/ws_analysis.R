@@ -55,18 +55,44 @@ wsdc1$site <- "C1"
 wsdel$site <- "Eldo"
 
 wsd <- rbind(wsdb1, wsdc1, wsdel)
+#as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" )
+dff <- as.numeric(difftime(as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
+                as.POSIXct(wsd$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+                units="mins"))
+# 
+# #from https://stackoverflow.com/questions/66220486/group-a-vector-of-numbers-by-range
+# dffu <- unique(dff)
+# first_list <- unique(apply(outer(dffu, dffu, "-"), 1, function(x){vec[(x < 3 & x >= 0)] }))
+# final_list <- first_list[!sapply(seq_along(first_list), function(i) max(sapply(first_list[-i],function(L) all(first_list[[i]] %in% L))))]
+# #error can't allocate that much memory
 
-wsd_less <- wsd %>% group_by(dt, site) %>% summarize(sr=mean(sr), 
-                                              ws=mean(ws), 
-                                              T_soil=mean(T_soil), 
-                                              T_0.25=mean(T_0.25),
-                                              T_0.50=mean(T_0.50),
-                                              T_0.75=mean(T_0.75),
-                                              T_1.00=mean(T_1.00),
-                                              T_1.25=mean(T_1.25))
+#new idea is a double diff
+dffl <- dff-lag(dff)
+break_inds <- dffl>1
+bins <- dff[break_inds]
+bins[1] <- 0
 
-wsd_less <- wsd_less[3:length(wsd_less$sr),] #remove a few weird entries
-#wsdb1_less <- wsdb2less
+#note break should be after index 18 before 19 of dff
+
+wsd$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
+
+#wsd %>% group_by(group) %>% (mean(dt))
+wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsd_less <- aggregate(wsd, list(wsd$group, site=wsd$site), mean) 
+wsd_less <- wsd_less[,2:11]
+#res$dt <- as.POSIXct(res$dt, origin="1970-01-01")
+
+# wsd_less <- wsd %>% group_by(dt, site) %>% summarize(sr=mean(sr), 
+#                                               ws=mean(ws), 
+#                                               T_soil=mean(T_soil), 
+#                                               T_0.25=mean(T_0.25),
+#                                               T_0.50=mean(T_0.50),
+#                                               T_0.75=mean(T_0.75),
+#                                               T_1.00=mean(T_1.00),
+#                                               T_1.25=mean(T_1.25))
+# 
+# wsd_less <- wsd_less[3:length(wsd_less$sr),] #remove a few weird entries
+# #wsdb1_less <- wsdb2less
 
 #had forgotten to do this before
 wsd_less$dt <- as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr

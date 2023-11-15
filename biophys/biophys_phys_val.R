@@ -7,14 +7,27 @@ library(TrenchR)
 #read in A1 climate data
 wsda1 <- read_csv("G:/Shared drives/RoL_FitnessConstraints/projects/ReciprocalTransplant_2023/WS/A1/A1_08162023_mod.csv", col_names=TRUE) %>% select(dt, T_soil, T_0.25, T_0.50, T_0.75, T_1.00, T_1.25, ws, sr)
 wsda1$site <- "A1"
-wsd_less <- wsda1 %>% group_by(dt, site) %>% summarize(sr=mean(sr), 
-                                                     ws=mean(ws), 
-                                                     T_soil=mean(T_soil), 
-                                                     T_0.25=mean(T_0.25),
-                                                     T_0.50=mean(T_0.50),
-                                                     T_0.75=mean(T_0.75),
-                                                     T_1.00=mean(T_1.00),
-                                                     T_1.25=mean(T_1.25))
+# wsd_less <- wsda1 %>% group_by(dt, site) %>% summarize(sr=mean(sr), 
+#                                                      ws=mean(ws), 
+#                                                      T_soil=mean(T_soil), 
+#                                                      T_0.25=mean(T_0.25),
+#                                                      T_0.50=mean(T_0.50),
+#                                                      T_0.75=mean(T_0.75),
+#                                                      T_1.00=mean(T_1.00),
+#                                                      T_1.25=mean(T_1.25))
+
+dff <- as.numeric(difftime(as.POSIXct(wsda1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
+                           as.POSIXct(wsda1$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+                           units="mins"))
+dffl <- dff-lag(dff)
+break_inds <- dffl>1
+bins <- dff[break_inds]
+bins[1] <- 0
+wsda1$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
+wsda1$dt <- as.POSIXct(wsda1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsd_less <- aggregate(wsda1, list(wsda1$group), mean) 
+wsd_less <- wsd_less[,2:11]
+wsd_less$site <- "A1"
 
 wsd_less$dt <- as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
 
