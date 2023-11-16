@@ -97,6 +97,8 @@ wsd_less <- wsd_less[,2:11]
 #had forgotten to do this before
 wsd_less$dt <- as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
 
+saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS")
+
 wsd_less_t <- wsd_less %>% gather("clim_var", "value", -dt, -site) #prob want to expand to all ws vars (exc dt)
 
 #make a plot -- note some gaps in different sites' WS -- gap in Eldo (blue) early/mid and late in season, gap in C1 (green) mid-season
