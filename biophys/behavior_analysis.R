@@ -158,3 +158,23 @@ dTb_lumped <- dTb %>% mutate(Activity2=recode(Activity, WALK="MOVE", CLMB="MOVE"
 ggplot(dTb_lumped %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO"), aes(x=bTbsoilsun_.01, y=after_stat(count), group=Activity2, fill=Activity2)) +
   geom_density(adjust=1.5, position="fill") + facet_grid(vars(Species), vars(Site))
 
+
+#stacked barplot version
+dTblb <- dTb_lumped %>% mutate(tb_range = 
+                        case_when(
+                          bTbsoilsun_.01 >= 9 & bTbsoilsun_.01 < 15 ~ "[09-15)",
+                          bTbsoilsun_.01 >= 15 & bTbsoilsun_.01 < 20 ~ "[15,20)",
+                          bTbsoilsun_.01 >= 20 & bTbsoilsun_.01 < 25 ~ "[20,25)",
+                          bTbsoilsun_.01 >= 25 & bTbsoilsun_.01 < 30 ~ "[25,30)",
+                          bTbsoilsun_.01 >= 30 & bTbsoilsun_.01 < 35 ~ "[30,35)",
+                          bTbsoilsun_.01 >= 35 & bTbsoilsun_.01 < 40 ~ "[35,40)",
+                          bTbsoilsun_.01 >= 40 & bTbsoilsun_.01 < 45 ~ "[40,45)",
+                          bTbsoilsun_.01 >= 45 & bTbsoilsun_.01 < 50 ~ "[45,50)",
+                          bTbsoilsun_.01 >= 50 & bTbsoilsun_.01 < 55 ~ "[50,55)",
+                          bTbsoilsun_.01 >= 55 & bTbsoilsun_.01 < 60 ~ "[55,60)"
+                        ))
+fdTblb <- dTblb %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO")
+  
+ggplot(fdTblb, aes(x=tb_range, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
