@@ -144,8 +144,8 @@ ggplot(dTb %>% filter(!is.na(Activity)), aes(fill=Activity, x=Site)) +
 #new idea -- kinda works!
 
 #could be misleading wrt temperatures not commonly observed (0?) -- bTbsoilsun gives a more reasonable range
-ggplot(dTb %>% filter(Activity!="EGGL" & Activity!="MATE"), aes(x=bTbsoilsun_.01, group=Activity, fill=Activity)) +
-  geom_density(adjust=1.5, position="fill") + facet_grid(vars(Species), vars(Site))
+ggplot(dTb %>% filter(Activity!="EGGL" & Activity!="MATE"), aes(x=bTbsoilsun_.01, y=after_stat(count), group=Activity, fill=Activity)) +
+  geom_density(position="fill") + facet_grid(vars(Species), vars(Site))
 
 #idea -- lump CLMB and WALK?
 
@@ -155,6 +155,6 @@ ggplot(data=dTb, aes(x=bTbsoilsun_.01, fill = Activity)) + geom_histogram(bins=1
 
 dTb_lumped <- dTb %>% mutate(Activity2=recode(Activity, WALK="MOVE", CLMB="MOVE"))
 
-ggplot(dTb_lumped %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO"), aes(x=bTbsoilsun_.01, group=Activity2, fill=Activity2)) +
+ggplot(dTb_lumped %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO"), aes(x=bTbsoilsun_.01, y=after_stat(count), group=Activity2, fill=Activity2)) +
   geom_density(adjust=1.5, position="fill") + facet_grid(vars(Species), vars(Site))
 
