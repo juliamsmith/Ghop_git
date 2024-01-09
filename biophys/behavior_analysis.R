@@ -153,10 +153,10 @@ ggplot(dTb %>% filter(Activity!="EGGL" & Activity!="MATE"), aes(x=bTbsoilsun_.01
 ggplot(data=dTb, aes(x=bTbsoilsun_.01, fill = Activity)) + geom_histogram(bins=15)  + facet_grid(vars(Species), vars(Site))
 
 
-dTb_lumped <- dTb %>% mutate(Activity2=recode(Activity, WALK="MOVE", CLMB="MOVE"))
+dTb_lumped <- dTb %>% mutate(Activity2=dplyr::recode(Activity, WALK="MOVE", CLMB="MOVE"))
 
 ggplot(dTb_lumped %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO"), aes(x=bTbsoilsun_.01, y=after_stat(count), group=Activity2, fill=Activity2)) +
-  geom_density(adjust=1.5, position="fill") + facet_grid(vars(Species), vars(Site))
+  geom_density(adjust=2, position="fill") + facet_grid(vars(Species), vars(Site)) #adjust varies it
 
 
 #stacked barplot version
@@ -174,7 +174,320 @@ dTblb <- dTb_lumped %>% mutate(tb_range =
                           bTbsoilsun_.01 >= 55 & bTbsoilsun_.01 < 60 ~ "[55,60)"
                         ))
 fdTblb <- dTblb %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO")
-  
-ggplot(fdTblb, aes(x=tb_range, fill=Activity2)) + 
+
+cutoff <- 10 #picking the cutoff
+
+su <- fdTblb %>% group_by(Species, Site, bTbsoilsun_.01) %>% summarize(under=n()<cutoff)
+
+unders <- su %>% filter(under==TRUE)
+
+
+f_dat <- fdTblb
+for(i in 1:length(unders$Species)){
+  f_dat <- f_dat %>% filter(!(Species==unders$Species[i] & Site==unders$Site[i] & bTbsoilsun_.01==unders$bTbsoilsun_.01[i]))
+}
+
+
+fdTblb %>%
+mutate(Site=factor(Site, levels=c("Eldo", "B1", "C1")),
+       Activity2=factor(Activity2, levels=c("STAT", "FEED", "MOVE"))) %>%  
+ggplot(aes(x=tb_range, fill=Activity2)) + 
   geom_bar(stat="count", position="fill") +
   facet_grid(vars(Species), vars(Site))
+
+
+ggplot(dTb_lumped %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO"), aes(x=T_0.25, y=after_stat(count), group=Activity2, fill=Activity2)) +
+  geom_density(adjust=2, position="fill") + facet_grid(vars(Species), vars(Site)) #adjust varies it
+
+
+
+dTlb <- dTb_lumped %>% mutate(airtemp = 
+                                 case_when(
+                                   T_0.25 >= 5 & T_0.25 < 10 ~ "[05-10)",
+                                   T_0.25 >= 10 & T_0.25 < 15 ~ "[10,15)",
+                                   T_0.25 >= 15 & T_0.25 < 20 ~ "[15, 20)",
+                                   T_0.25 >= 20 & T_0.25 < 25 ~ "[20,25)",
+                                   T_0.25 >= 25 & T_0.25 < 30 ~ "[25,30)",
+                                   T_0.25 >= 30 & T_0.25 < 35 ~ "[30,35)",
+                                   T_0.25 >= 35 & T_0.25 < 40 ~ "[35,40)",
+                                   T_0.25 >= 40 & T_0.25 < 45 ~ "[40,45)"
+                                 ))
+
+fdTlb <- dTlb %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO")
+
+ggplot(fdTlb, aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+ggplot(fdTlb, aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count") +
+  facet_grid(vars(Species), vars(Site))
+
+
+#combining with past data (using air temps at 1m)
+d_all <- readRDS("biophys/pairedcagewsbothyrs.RDS") 
+d_all <- d_all %>% filter(!is.na(Activity))
+d_all_lumped <- d_all %>% mutate(Activity2=dplyr::recode(Activity, WALK="MOVE", CLMB="MOVE"))
+
+
+dalb <- d_all_lumped %>% mutate(airtemp = 
+             case_when(
+               T_1.00 >= 5 & T_1.00 < 10 ~ "[05-10)",
+               T_1.00 >= 10 & T_1.00 < 15 ~ "[10,15)",
+               T_1.00 >= 15 & T_1.00 < 20 ~ "[15, 20)",
+               T_1.00 >= 20 & T_1.00 < 25 ~ "[20,25)",
+               T_1.00 >= 25 & T_1.00 < 30 ~ "[25,30)",
+               T_1.00 >= 30 & T_1.00 < 35 ~ "[30,35)",
+               T_1.00 >= 35 & T_1.00 < 40 ~ "[35,40)",
+               T_1.00 >= 40 & T_1.00 < 45 ~ "[40,45)"
+             ))
+
+dalb <- d_all_lumped %>% mutate(airtemp = 
+                                  case_when(
+                                    T_1.00 >= 7.5 & T_1.00 < 12.5 ~ "10",
+                                    T_1.00 >= 12.5 & T_1.00 < 17.5 ~ "15",
+                                    T_1.00 >= 17.5 & T_1.00 < 22.5 ~ "20",
+                                    T_1.00 >= 22.5 & T_1.00 < 27.5 ~ "25",
+                                    T_1.00 >= 27.5 & T_1.00 < 32.5 ~ "30",
+                                    T_1.00 >= 32.5 & T_1.00 < 39 ~ "35"
+                                  ))
+
+
+
+fdalb <- dalb %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO")
+fdalb %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>%
+ggplot(aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+ggplot(fdalb, aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count") +
+  facet_grid(vars(Species), vars(Site))
+
+#now filter out any bin with less than 10(?) observations (or 20?)
+cutoff <- 15 #picking the cutoff
+
+su <- fdalb %>% group_by(Species, Site, airtemp) %>% summarize(under=n()<cutoff)
+
+unders <- su %>% filter(under==TRUE)
+
+
+dat <- fdalb
+for(i in 1:length(unders$Species)){
+  dat <- dat %>% filter(!(Species==unders$Species[i] & Site==unders$Site[i] & airtemp==unders$airtemp[i]))
+}
+
+
+issu <- dat %>% group_by(Species, Site, airtemp) %>% summarize(under=n()<cutoff)
+
+
+#the main plot!!!!!!
+
+dat$elev = dplyr::recode(dat$Site, Eldo="1740m", A1="2195m", B1="2915m", C1="3048m")
+
+dat %>%
+  mutate(#Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1")),
+         Activity2=factor(Activity2, levels=c("FEED", "STAT","MOVE"))) %>% 
+  ggplot(aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(Species ~ elev) + 
+  ylab("Proportion of observations") + 
+  xlab("Air temperature at 1m (°C)") +
+  scale_fill_viridis_d(name="Activity", labels=c("Feeding", "Stationary", "Moving")) +
+  theme(strip.text.y = element_blank(), legend.position = c(0.12, 0.755))
+
+#split apart 2022 and 2023
+ggplot(dat %>% filter(year=="2022"), aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+ggplot(dat %>% filter(year=="2023"), aes(x=airtemp, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+dat %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  filter(Activity2=="STAT") %>%
+  ggplot(aes(x=airtemp, fill=Location)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+dat_lumped <- dat %>% mutate(Location2=dplyr::recode(Location, ROCK="LOW", SOIL="LOW", VEGL="LOW",
+                                              CAGH="HIGH", CAGL="HIGH", CAGM="HIGH", VEGH="HIGH"))
+
+dat_lumped %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  filter(Activity2=="STAT" & !is.na(Location2)) %>%
+  ggplot(aes(x=airtemp, fill=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+dat_lumped2 <- dat %>% mutate(Location2=dplyr::recode(Location,CAGH="CAGE", CAGL="CAGE", CAGM="CAGE"))
+
+
+#position when stationary
+dat_lumped2 %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  filter(Activity2=="STAT" & !is.na(Location2) & Location2!="ROCK") %>%
+  ggplot(aes(x=airtemp, fill=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+# position at any time / activity
+dat_lumped2 %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  filter(!is.na(Location2) & Location2!="ROCK") %>%
+  mutate(Location2=factor(Location2, levels=c("CAGE", "VEGH", "VEGL", "SOIL"))) %>%
+  ggplot(aes(x=airtemp, fill=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+#shaded or not
+dat_lumped %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1")), 
+         Exposure=factor(Exposure, levels=c("ASUN", "MSUN", "SHSU", "MSHA", "SHAD"))) %>% 
+  filter(!is.na(Exposure)) %>%
+  ggplot(aes(x=airtemp, fill=Exposure)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+
+dat_lumped %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  filter(Activity2=="STAT") %>%
+  filter(!is.na(Location2)) %>%
+  ggplot(aes(x=airtemp, fill=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site)) # look into filtering tho!
+
+dat_lumped %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  #  filter(Activity2=="STAT") %>%
+  filter(!is.na(Location2)) %>%
+  ggplot(aes(x=airtemp, fill=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+#likely not enough data?
+dat_lumped %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1"))) %>% 
+  filter(Activity2=="MOVE") %>%
+  filter(!is.na(Location2)) %>%
+  ggplot(aes(x=airtemp, fill=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+#tried to do hatching within the stacked activities barplot to show location
+#but prob not worth it
+dat_lumped %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1")),
+         Activity2=factor(Activity2, levels=c("STAT", "FEED", "MOVE"))) %>% 
+  ggplot(aes(x=airtemp, fill=Activity2, color=Location2, pattern=Location2, pattern_type=Location2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site))
+
+d_all_lumped <- d_all_lumped %>% mutate(newt=format(dt, format="%H:%M:%S"))
+#plotting by time of day
+dalbtime <- d_all_lumped %>% mutate(TOD = 
+                                      case_when( 
+                                        newt >= "06:30:00" & newt < "09:00:00" ~ "08:00*",
+                                        newt >= "09:00:00" & newt < "11:00:00" ~ "10:00",
+                                        newt >= "11:00:00" & newt < "13:00:00" ~ "12:00",
+                                        newt >= "13:00:00" & newt < "15:00:00" ~ "14:00",
+                                        newt >= "15:00:00" & newt < "17:00:00" ~ "16:00"
+                                      ))
+#now filter out any bin with less than 10(?) observations (or 20?)
+fdalbtime <- dalbtime %>% filter(Activity!="EGGL" & Activity!="MATE" & Activity!="GROO")
+
+cutoff <- 15 #picking the cutoff
+
+su <- fdalbtime %>% group_by(Species, Site, TOD) %>% summarize(under=n()<cutoff)
+
+unders <- su %>% filter(under==TRUE)
+
+
+dat <- fdalbtime
+for(i in 1:length(unders$Species)){
+  dat <- dat %>% filter(!(Species==unders$Species[i] & Site==unders$Site[i] & TOD==unders$TOD[i]))
+}
+
+
+issu <- dat %>% group_by(Species, Site, TOD) %>% summarize(under=n()<cutoff)
+
+dat %>%
+  mutate(Site=factor(Site, levels=c("Eldo", "A1", "B1", "C1")),
+         Activity2=factor(Activity2, levels=c("FEED", "STAT","MOVE"))) %>% 
+  ggplot(aes(x=TOD, fill=Activity2)) + 
+  geom_bar(stat="count", position="fill") +
+  facet_grid(vars(Species), vars(Site)) +
+  scale_fill_discrete(name = "Activity") + 
+  ylab("Proportion of observations") + 
+  xlab("Time of day")
+
+
+#### https://www.geeksforgeeks.org/multinomial-logistic-regression-in-r/
+
+library(VGAM) 
+
+fdalb$Activity2 <- as.factor(fdalb$Activity2)
+
+fit <- vglm(Activity2 ~ T_1.00+Species+Site,
+            fdalb,
+            family = multinomial)
+
+summary(fit)
+ 
+
+#### https://stats.oarc.ucla.edu/r/dae/multinomial-logistic-regression/
+library(nnet)
+
+fdalb$Activity2 <- relevel(fdalb$Activity2, ref = "STAT")
+test <- multinom(Activity2 ~ T_1.00+Species+Site, data = fdalb)
+summary(test)
+
+z <- summary(test)$coefficients/summary(test)$standard.errors
+
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+#note: the odds of move vs stationary varies with T_1.00... favoring move more at higher temps
+
+
+#other: https://bookdown.org/sarahwerth2024/CategoricalBook/multinomial-logit-regression-r.html
+
+fdalb$Activity2 <- relevel(fdalb$Activity2, ref = "STAT")
+test <- multinom(Activity2 ~ T_1.00+Species+Site, data = fdalb)
+summary(test)
+
+z <- summary(test)$coefficients/summary(test)$standard.errors
+
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+
+
+
+#for just MS
+fdalb$Activity2 <- relevel(fdalb$Activity2, ref = "STAT") #think about the justification for "STAT" bc it matters
+testMS <- multinom(Activity2 ~ T_1.00+Site, data = fdalb %>% filter(Species=="MS"))
+summary(testMS)
+
+zMS <- summary(testMS)$coefficients/summary(testMS)$standard.errors
+
+pMS <- (1 - pnorm(abs(zMS), 0, 1)) * 2
+#NOTE: when it's T_1.00*Site then nothing is significant but AIC is a bit higher
+#but there is potentially reason to want to have temp*Site given what we know
+pMS
+
+#just for MB
+testMB <- multinom(Activity2 ~ T_1.00+Site, data = fdalb %>% filter(Species=="MB"))
+summary(testMB)
+
+zMB <- summary(testMB)$coefficients/summary(testMB)$standard.errors
+
+pMB <- (1 - pnorm(abs(zMB), 0, 1)) * 2
+#NOTE: same situation for with T_1.00*Site as for the other
+pMB
