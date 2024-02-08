@@ -1,4 +1,6 @@
 library(tidyverse)
+library(lme4)
+
 
 dry <- read_csv("TPC/DigestionDryMasses_rough.csv")
 wet <- read_csv("TPC/MB_WetMasses_rough.csv")
@@ -11,7 +13,7 @@ trial_more <- merge(trial, hoppers, by="full_ID")
 #merge wet and dry info
 wg <- merge(wet, dry, by.x="wg_ID", by.y="sample_num")
 
-#Wet-to-dry control
+#Wet-to-dry control (first just MB)
 w2dctrl <- wg %>% filter(startsWith(wg_ID, "WG_"))
 w2dctrl$wet_mass <- as.numeric(w2dctrl$wet_mass)
 w2dctrl$`wg_drymass (mg)` <- as.numeric(w2dctrl$`wg_drymass (mg)`)
@@ -31,7 +33,7 @@ w2dctrl2 <- wg2 %>% filter(startsWith(wg_ID, "WG_"))
 w2dctrl2$wet_mass <- as.numeric(w2dctrl2$wet_mass)
 w2dctrl2$`wg_drymass (mg)` <- as.numeric(w2dctrl2$`wg_drymass (mg)`)
 
-ggplot(w2dctrl2, aes(x=wet_mass, y=`wg_drymass (mg)`, color=plot_ID)) + geom_point() + geom_smooth(method=lm) 
+ggplot(w2dctrl2, aes(x=wet_mass, y=`wg_drymass (mg)`, color=plot_ID)) + geom_point() #+ geom_smooth(method=lm) 
 
 mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrl2)
 summary(mod)
@@ -46,8 +48,8 @@ summary(mod)
 
 
 #let's combine both
-w2dctrl <- w2dctrl %>% select(wg_ID, wet_mass, `wg_drymass (mg)`, plot_ID)
-w2dctrl2 <- w2dctrl2 %>% select(wg_ID, wet_mass, `wg_drymass (mg)`, plot_ID)
+w2dctrl <- w2dctrl %>% dplyr::select(wg_ID, wet_mass, `wg_drymass (mg)`, plot_ID)
+w2dctrl2 <- w2dctrl2 %>% dplyr::select(wg_ID, wet_mass, `wg_drymass (mg)`, plot_ID)
 
 #spp is just a placeholder for time when I did this (July vs August)... 
 #maybe the wheatgrass selection at the grocery store differed at these two times  
@@ -68,7 +70,7 @@ summary(mod)
 CL=.95
 
 #these are quite wide predictions :(
-predictions <- predict(mod, data.frame(wg %>% select(wet_mass, plot_ID)), 
+predictions <- predict(mod, data.frame(wg %>% dplyr::select(wet_mass, plot_ID)), 
                       interval = "prediction", level = CL)
 
 
@@ -99,8 +101,12 @@ ggplot(mrg %>% filter(is.na(is_valid)), aes(x=temp, y=eaten, color=`discolored (
 #removing discolored and invalid (due to hopper death) observations 
 mrg2 <- mrg %>% filter(is.na(is_valid) & `discolored (Y/N)`=='N')
                        
-#plot by sex
+#plot by sex and site
+ggplot(mrg2, aes(x=temp, y=eaten, color=site, linetype=sex, shape=sex)) + geom_point(alpha=.5) + geom_smooth(se=FALSE) + ggtitle("dried wg eaten w site")
+
+#plot by sex only
 ggplot(mrg2, aes(x=temp, y=eaten, color=sex)) + geom_point(alpha=.5) + geom_smooth() + ggtitle("dried wg eaten")
+
 
 #divided by hopper mass
 ggplot(mrg2, aes(x=temp, y=eaten/mass, color=sex)) + geom_point() + geom_smooth() + ggtitle("mass eaten / hopper mass")
@@ -116,11 +122,42 @@ ggplot(mrg2, aes(x=temp, y=as.numeric(`feces_drymass (mg)`))) + geom_point(alpha
 
 ggplot(mrg2, aes(x=temp, y=as.numeric(`feces_drymass (mg)`), color=sex)) + geom_point(alpha=.5) + geom_smooth() + ggtitle("feces with temp by sex")
 
+ggplot(mrg2, aes(x=temp, y=as.numeric(`feces_drymass (mg)`), color=site, linetype=sex, shape=sex)) + geom_point(alpha=.5) + geom_smooth(se=FALSE) + ggtitle("feces with temp by sex and site")
 
-#working with mrg2 to plot upper and lower bounds
+
+
+#working with mrg2 to plot upper and lower bounds -- kinda bleak
 mrg2_range <- mrg2 %>% 
   pivot_longer(cols=c(eaten, eaten_l, eaten_h), names_to="CI", values_to="eaten_all")
   
 
 ggplot(mrg2_range, aes(x=temp, y=eaten_all, color=CI, linetype=sex, shape=sex)) + geom_point(alpha=.5) + geom_smooth() + ggtitle("eaten with CI")
 
+
+
+
+#seeing if lmer helps... not much difference it seems
+mod_lme <- lmer(`wg_drymass (mg)` ~ wet_mass + (1|spp/plot_ID), w2d)
+summary(mod_lme)
+
+plot(mod_lme)
+
+qqnorm(resid(mod_lme))
+qqline(resid(mod_lme))  
+#they fall off on the high end
+wg$spp <- "MB"
+p2 <- predict.merMod(mod_lme, data.frame(wg %>% select(wet_mass, spp, plot_ID)), 
+        interval = "prediction", level = CL)
+
+new_dat <- wg %>% dplyr::select(wet_mass, spp, plot_ID)
+
+pred_ints <- predictInterval(mod_lme, 
+                             newdata = new_dat, 
+                             n.sims = 1000,
+                             returnSims = TRUE, 
+                             seed = 123, 
+                             level = 0.95)
+
+#similar fits and CIs for lmer
+
+summar <- mrg2 %>% group_by(site, sex, temp) %>% summarize(n())
