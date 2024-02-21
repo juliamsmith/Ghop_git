@@ -161,3 +161,8 @@ pred_ints <- predictInterval(mod_lme,
 #similar fits and CIs for lmer
 
 summar <- mrg2 %>% group_by(site, sex, temp) %>% summarize(n())
+
+
+wetMS <- read_csv("TPC/MS_WetMasses_rough.csv")
+trialMS <- read_csv("TPC/MS_AllSites_rough.csv")
+hoppersMS <- read_csv("TPC/MS_Individual_data_rough.csv")

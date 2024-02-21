@@ -55,6 +55,9 @@ wsdc1$site <- "C1"
 wsdel$site <- "Eldo"
 
 wsd <- rbind(wsdb1, wsdc1, wsdel)
+
+
+
 #as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" )
 dff <- as.numeric(difftime(as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
                 as.POSIXct(wsd$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
@@ -94,10 +97,24 @@ wsd_less <- wsd_less[,2:11]
 # wsd_less <- wsd_less[3:length(wsd_less$sr),] #remove a few weird entries
 # #wsdb1_less <- wsdb2less
 
+wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
+
+wsd_t <- wsd %>% gather("clim_var", "value", -dt, -site, -group) #prob want to expand to all ws vars (exc dt)
+
+#let's zero in on a location of overlap of coverage at all sites: mid-august 
+wsdzoom_more <- wsd_t %>% filter(as.Date(dt,format="%Y-%m-%d %H:%M", tz="MST")== "2023-08-15")
+
+#solar radiation
+ggplot(wsdzoom_more %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
+
+
+
 #had forgotten to do this before
 wsd_less$dt <- as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
 
-saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS")
+wsd_less <- wsd_less %>% mutate(sr = ((sr-39) * 1.8) + ((25-T_1.25) * .0012))
+
+#saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS")
 
 wsd_less_t <- wsd_less %>% gather("clim_var", "value", -dt, -site) #prob want to expand to all ws vars (exc dt)
 
@@ -109,6 +126,13 @@ ggplot(wsd_less %>% mutate(v=ifelse(site=="C1", .75, ifelse(site=="B1", .5, .25)
 
 #let's zero in on a location of overlap of coverage at all sites: mid-august 
 wsdzoom <- wsd_less_t %>% filter(as.Date(dt, format="%m/%d/%Y %H:%M")>as.Date("8/11/2023 16:30", format="%m/%d/%Y %H:%M") & as.Date(dt, format="%m/%d/%Y %H:%M")<as.Date("8/18/2023 12:21", format="%m/%d/%Y %H:%M"))
+
+#let's zero in on a location of overlap of coverage at all sites: mid-august 
+wsdzoom_more <- wsd_less_t %>% filter(as.Date(dt,format="%Y-%m-%d %H:%M", tz="MST")== "2023-08-15")
+
+#solar radiation
+ggplot(wsdzoom_more %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
+
 
 #solar radiation
 ggplot(wsdzoom %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
@@ -124,7 +148,7 @@ ggplot(wsdzoom %>% filter(clim_var=="T_soil"), aes(x=dt, y=value, col=site)) + g
 wz <- wsdzoom %>% filter(clim_var=="sr")
 #write_csv(wsdzoom, "zoomwsmidAug.csv") #this seems to lead to issues
 
-saveRDS(wsdzoom, file = "biophys/zoomwsmidAug.RDS") 
+#saveRDS(wsdzoom, file = "biophys/zoomwsmidAug.RDS") 
 
 
 save()
