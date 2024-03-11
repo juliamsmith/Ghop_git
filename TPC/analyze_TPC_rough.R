@@ -116,7 +116,7 @@ ggplot(mrg2, aes(x=temp, y=eaten/mass, color=sex)) + geom_point() + geom_smooth(
 
 ggplot(mrg2, aes(x=eaten, y=as.numeric(`feces_drymass (mg)`), color=temp)) + geom_point() + ggtitle("feces mass scales with mass eaten(?)")
 
-ggplot(mrg2, aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/eaten)) + geom_point(alpha=.5) + geom_smooth() + ggtitle("feces/eaten with temp")
+ggplot(mrg2, aes(x=temp, y=as.numeric((eaten-`feces_drymass (mg)`))/eaten)) + geom_point(alpha=.5) + geom_smooth() + ggtitle("feces/eaten with temp")
 
 ggplot(mrg2, aes(x=temp, y=as.numeric(`feces_drymass (mg)`))) + geom_point(alpha=.5) + geom_smooth() + ggtitle("feces with temp")
 

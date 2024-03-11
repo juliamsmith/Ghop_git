@@ -82,17 +82,44 @@ w2dctrl$`wg_drymass (mg)` <- as.numeric(w2dctrl$`wg_drymass (mg)`)
 w2dctrl$wet_mass <- as.numeric(w2dctrl$wet_mass)
 w2dctrl$wet_mass[!is.numeric(w2dctrl$wet_mass)] <- NA
 
+#read in w2d see wettodrylm
+setwd("G:/Shared drives/RoL_FitnessConstraints/projects/DigestionTPC")
+w2d <- read_csv("Data/WetToDryJune2023.csv")
+
+setwd("C:/Users/smith/Desktop/Ghop_git/TPC")
+
+w2dadd <- w2d %>% select(-WG_num) %>% rename(wet_mass="Wet_mass_g", `wg_drymass (mg)`="Dry_mass_mg", plot_ID="change_q")
+
+w2dctrlmore <- rbind(w2dctrl %>% select(wet_mass, `wg_drymass (mg)`, plot_ID), w2dadd)
+
+ggplot(w2dctrlmore, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
+
+mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrlmore)
+summary(mod)
+
+
 ggplot(w2dctrl, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
 
-mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrl)
+mod2<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrl)
 summary(mod)
+
+morew2d <- read_csv("Morew2d.csv")
+
+morew2d <- morew2d %>% select(-ID_prime, -rng, -notes)
+
+w2dctrlmoremore <- rbind(morew2d %>% select(wet_mass, `wg_drymass (mg)`, plot_ID), w2dctrlmore)
+
+ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`))) + geom_point() + geom_smooth(method="lm") 
+
+ggplot(morew2d,aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm")
 
 #these are quite wide predictions :(
 newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
 newdf$wet_mass <- as.numeric(newdf$wet_mass)
 predictions <- predict(mod, newdf, 
                        interval = "prediction", level = .95)
-
+predictions2 <- predict(mod2, newdf, 
+                       interval = "prediction", level = .95)
 
 #add predicted dry masses
 wgnpred <- cbind(wg, predictions)
@@ -127,11 +154,78 @@ ggplot(mrg_refinedforwg, aes(x=temp, color=start_date, y=eaten/mass, linetype=se
 ggplot(mrg_refinedforfeces, aes(x=temp, color=start_date, y=fecesdry/mass, linetype=sex, shape=sex)) + geom_point(alpha=.5) + ggtitle("Refined feces dry mass colored by trial") + facet_grid(site~spp)
 
 #assimilation
-ggplot(mrg_refinedforwg, aes(x=temp, y=fecesdry/eaten, linetype=sex, shape=sex)) + geom_point(alpha=.5) + ggtitle("Refined assimilation") + facet_grid(site~spp)
+ggplot(mrg_refinedforwg, aes(x=temp, y=(eaten-fecesdry)/eaten, linetype=sex, shape=sex)) + geom_point(alpha=.5) + ggtitle("Refined assimilation") + facet_grid(site~spp)
 
 #note... rule of <40 and see how it looks then 
-ggplot(mrg_refinedforwg %>% filter(fecesdry/eaten<40), aes(x=temp, y=fecesdry/eaten, linetype=sex, shape=sex)) + geom_point(alpha=.5) + geom_smooth(se=FALSE) + ggtitle("Refined assimilation") + facet_grid(site~spp)
+ggplot(mrg_refinedforwg %>% filter(fecesdry/eaten<40), aes(x=temp, y=(eaten-fecesdry)/eaten, linetype=sex, shape=sex)) + geom_point(alpha=.5) + geom_smooth(se=FALSE) + ggtitle("Refined assimilation") + facet_grid(site~spp)
 
 mrg_refinedforwg <- mrg_refinedforwg %>% filter(!is.na(fecesdry), !is.na(eaten))
 
-ARs <- mrg_refinedforwg %>% group_by(spp, site, temp) %>% summarize(AR=mean(fecesdry/eaten))
+ARs <- mrg_refinedforwg %>% group_by(spp, site, temp) %>% summarize(AR=mean((eaten-fecesdry)/eaten))
+
+# library(devtools)
+# install_github("mdjbru-R-packages/thermPerf")
+library(thermPerf)
+
+#adding 0 at CTmax doesn't fix it... possibly makes it worse
+inputs <- data.frame(spp=rep(NA, 16), site=rep(NA, 16), sex=rep(NA, 16))
+i=0
+CTmax=50
+for(sppi in c("MS", "MB")) {
+  for(sitei in c("Eldo", "A1", "B1", "C1")) {
+    for(sexi in c("M", "F")) {
+      i=i+1
+      inputs$spp[i] <- spp
+      inputs$site[i] <- site
+      inputs$sex[i] <- sex
+      dat <- mrg_refinedforwg %>% filter(site==sitei & spp==sppi & sex==sexi)
+      if(dim(dat)[1]!=0) {
+        fits = fitModels(models, c(as.numeric(dat$temp), CTmax), c(as.numeric(dat$fecesdry), 0))
+        plot(fits, main=paste(sppi, sexi, sitei))
+      }
+    }
+  }
+}
+
+
+
+
+fits = fitModels(getModelLibrary(), temp, growth)
+plot(fits)
+
+library(scales)
+
+
+f <- rescale(as.numeric(dat$fecesdry), to=c(0,1))
+fits = fitModels(getModelLibrary(), dat$temp, f)
+
+s <- dat %>% group_by(temp) %>% summarize(m=mean(fecesdry))
+fits = fitModels(getModelLibrary(), s$temp, s$m)
+
+
+
+mFunction = function(x, params) {
+  # params model parameters, a0, a1, a2, a3
+  alpha = params[["alpha"]]
+  beta = params[["beta"]]
+  gam = params[["gam"]]
+  b = params[["b"]]
+  c = params[['c']]
+  return(c*(((x-alpha)/b)^((gam/beta)-1)*(1-(x-alpha)/b)^(((1-gam)/beta)-1)*gamma(1/beta))/(gamma(gam/beta)*gamma((1-gam)/beta)))
+}
+mName="Gamma function TPC"
+mFormula = y~(c*(((x-alpha)/b)^((gam/beta)-1)*(1-(x-alpha)/b)^(((1-gam)/beta)-1)*gamma(1/beta))/(gamma(gam/beta)*gamma((1-gam)/beta)))
+mParams=c('alpha', 'beta', 'gam', 'b','c')
+mStarting=list(alpha=0, beta=.3, gam=0.7, b=55,c=1)
+myModel=buildModel(mFunction, mName, mFormula, mParams, mStarting)
+
+# Fit the model, along with some models from the model library
+models = getModelLibrary()[c("linearFit")]
+models[["myModel"]] = myModel
+
+temp = c(16,23,30,37,40,43, 50)
+growth = c(0.2,2.1,4.6,8.6,8.4,5.9,0)
+
+female_fits = fitModels(models, temp,growth)
+female_fits$myModel #this shows fitted parameters of the curve
+plot(female_fits)

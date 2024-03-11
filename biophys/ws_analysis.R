@@ -54,48 +54,116 @@ wsdb1$site <- "B1"
 wsdc1$site <- "C1"
 wsdel$site <- "Eldo"
 
-wsd <- rbind(wsdb1, wsdc1, wsdel)
+wsdel <- wsdel %>% arrange(as.POSIXct(dt, format="%m/%d/%Y %H:%M", tz = "MST" ))
 
-
-
-#as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" )
-dff <- as.numeric(difftime(as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
-                as.POSIXct(wsd$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
-                units="mins"))
-# 
-# #from https://stackoverflow.com/questions/66220486/group-a-vector-of-numbers-by-range
-# dffu <- unique(dff)
-# first_list <- unique(apply(outer(dffu, dffu, "-"), 1, function(x){vec[(x < 3 & x >= 0)] }))
-# final_list <- first_list[!sapply(seq_along(first_list), function(i) max(sapply(first_list[-i],function(L) all(first_list[[i]] %in% L))))]
-# #error can't allocate that much memory
+#for B1
+dff <- as.numeric(difftime(as.POSIXct(wsdb1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
+                            as.POSIXct(wsdb1$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+                            units="mins"))
 
 #new idea is a double diff
 dffl <- dff-lag(dff)
-break_inds <- dffl>1
+break_inds <- dffl>3 #changed from 1
 bins <- dff[break_inds]
 bins[1] <- 0
 
 #note break should be after index 18 before 19 of dff
 
-wsd$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
+wsdb1$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
 
 #wsd %>% group_by(group) %>% (mean(dt))
-wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
-wsd_less <- aggregate(wsd, list(wsd$group, site=wsd$site), mean) 
-wsd_less <- wsd_less[,2:11]
-#res$dt <- as.POSIXct(res$dt, origin="1970-01-01")
+wsdb1$dt <- as.POSIXct(wsdb1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsdb1_less <- aggregate(wsdb1, list(wsdb1$group, site=wsdb1$site), mean) 
+wsdb1_less <- wsdb1_less[,1:11]
 
-# wsd_less <- wsd %>% group_by(dt, site) %>% summarize(sr=mean(sr), 
-#                                               ws=mean(ws), 
-#                                               T_soil=mean(T_soil), 
-#                                               T_0.25=mean(T_0.25),
-#                                               T_0.50=mean(T_0.50),
-#                                               T_0.75=mean(T_0.75),
-#                                               T_1.00=mean(T_1.00),
-#                                               T_1.25=mean(T_1.25))
+
+#for C1
+dff <- as.numeric(difftime(as.POSIXct(wsdc1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
+                           as.POSIXct(wsdc1$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+                           units="mins"))
+
+#new idea is a double diff
+dffl <- dff-lag(dff)
+break_inds <- dffl>3 #changed from 1
+bins <- dff[break_inds]
+bins[1] <- 0
+
+#note break should be after index 18 before 19 of dff
+
+wsdc1$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
+
+#wsd %>% group_by(group) %>% (mean(dt))
+wsdc1$dt <- as.POSIXct(wsdc1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsdc1_less <- aggregate(wsdc1, list(wsdc1$group, site=wsdc1$site), mean) 
+wsdc1_less <- wsdc1_less[,1:11]
+
+
+
+
+#for Eldo
+dff <- as.numeric(difftime(as.POSIXct(wsdel$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
+                           as.POSIXct(wsdel$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+                           units="mins"))
+
+#new idea is a double diff
+dffl <- dff-lag(dff)
+break_inds <- dffl>3 #changed from 1
+bins <- dff[break_inds]
+bins[1] <- 0
+
+#note break should be after index 18 before 19 of dff
+
+wsdel$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
+
+#wsd %>% group_by(group) %>% (mean(dt))
+wsdel$dt <- as.POSIXct(wsdel$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsdel_less <- aggregate(wsdel, list(wsdel$group, site=wsdel$site), mean) 
+wsdel_less <- wsdel_less[,1:11]
+
+wsd_less <- rbind(wsdb1_less, wsdc1_less, wsdel_less)
+
+
+# wsd <- rbind(wsdb1, wsdc1, wsdel)
 # 
-# wsd_less <- wsd_less[3:length(wsd_less$sr),] #remove a few weird entries
-# #wsdb1_less <- wsdb2less
+# 
+# #as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" )
+# dff <- as.numeric(difftime(as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
+#                 as.POSIXct(wsd$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+#                 units="mins"))
+# # 
+# # #from https://stackoverflow.com/questions/66220486/group-a-vector-of-numbers-by-range
+# # dffu <- unique(dff)
+# # first_list <- unique(apply(outer(dffu, dffu, "-"), 1, function(x){vec[(x < 3 & x >= 0)] }))
+# # final_list <- first_list[!sapply(seq_along(first_list), function(i) max(sapply(first_list[-i],function(L) all(first_list[[i]] %in% L))))]
+# # #error can't allocate that much memory
+# 
+# #new idea is a double diff
+# dffl <- dff-lag(dff)
+# break_inds <- dffl>3 #changed from 1
+# bins <- dff[break_inds]
+# bins[1] <- 0
+# 
+# #note break should be after index 18 before 19 of dff
+# 
+# wsd$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
+# 
+# #wsd %>% group_by(group) %>% (mean(dt))
+# wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+# wsd_less <- aggregate(wsd, list(wsd$group, site=wsd$site), mean) 
+# wsd_less <- wsd_less[,2:11]
+# #res$dt <- as.POSIXct(res$dt, origin="1970-01-01")
+# 
+# # wsd_less <- wsd %>% group_by(dt, site) %>% summarize(sr=mean(sr), 
+# #                                               ws=mean(ws), 
+# #                                               T_soil=mean(T_soil), 
+# #                                               T_0.25=mean(T_0.25),
+# #                                               T_0.50=mean(T_0.50),
+# #                                               T_0.75=mean(T_0.75),
+# #                                               T_1.00=mean(T_1.00),
+# #                                               T_1.25=mean(T_1.25))
+# # 
+# # wsd_less <- wsd_less[3:length(wsd_less$sr),] #remove a few weird entries
+# # #wsdb1_less <- wsdb2less
 
 wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
 
@@ -112,9 +180,9 @@ ggplot(wsdzoom_more %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + 
 #had forgotten to do this before
 wsd_less$dt <- as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
 
-wsd_less <- wsd_less %>% mutate(sr = ((sr-39) * 1.8) + ((25-T_1.25) * .0012))
+#wsd_less <- wsd_less %>% mutate(sr = ((sr-39) * 1.8) + ((25-T_1.25) * .0012))
 
-#saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS")
+saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS")
 
 wsd_less_t <- wsd_less %>% gather("clim_var", "value", -dt, -site) #prob want to expand to all ws vars (exc dt)
 
