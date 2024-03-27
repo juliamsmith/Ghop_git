@@ -230,6 +230,7 @@ d2022 <- C1_niwot_win_df %>%
 
 dlter = rbind(d2022, d2023)  
 
+dlter$dt <- dlter$dt + 60*60 #not sure why, but it seems this correction may be necessary
 
 #small intermission
 C12022ourtemps <- all %>% filter(site=="C1", year(dt)==2022) %>% select(dt, T_1.00)
@@ -321,15 +322,18 @@ lt2022 <- dlter %>% filter(year(dt)==2022)
 us2022 <- all %>% filter(site=="C1", year(dt)==2022)
 templt <- lt2022#[1:(27965-(35339-11805)+100),]
 tempus <- us2022#[1:4300,]
+ltextras2 <- templt[1,]
 i_offset=0
-for(i in 2:100000) {
+for(i in 2:33579) { # 2:15097
   i=i-i_offset
   diff <- tempus$dt[i]-templt$dt[i]
   diff_lag <- tempus$dt[i]-templt$dt[i+1]
   diff_lead <- tempus$dt[i]-templt$dt[i-1]
   if(abs(diff_lag)<abs(diff)) {
+    ltextras2 <- rbind(ltextras2, templt[i,])
     templt <- templt[-i,]
     i_offset=i_offset+1 #added this in because I think it should be there
+    ltextras2 <- rbind(ltextras2, templt[i,])
   }
   if(abs(diff_lead)<abs(diff)) {
     tempus <- tempus[-i,]
@@ -343,31 +347,38 @@ for(i in 2:100000) {
   print(abs(diff))
 }
 
+#ltextras2 <- rbind(ltextras2, templt[15097:length(templt$dt),]) #we stop in late sept... we don't need more
+ltextras2 <- ltextras2 %>% rename(dt_lt="dt", ws_lt="ws", sr_lt="sr", T_soil_lt="T_soil", T_1.00_lt="T_1.00")
+
+
 t <- templt %>% rename(dt_lt="dt", ws_lt="ws", sr_lt="sr", T_soil_lt="T_soil", T_1.00_lt="T_1.00")
 C1bind2 <- cbind(tempus, t[1:15096,])
 ggplot(C1bind2, aes(x=sr_lt, y=sr)) + geom_point() + geom_smooth(method="lm")
 mod <- lm(sr~sr_lt, C1bind2)
-summary(mod) #.6073 R2
+summary(mod) #.8352 R2
 
 ggplot(C1bind2, aes(x=T_1.00_lt, y=T_1.00)) + geom_point() + geom_smooth(method="lm")
 mod <- lm(T_1.00~T_1.00_lt, C1bind2)
-summary(mod) #.8763 R2
+summary(mod) #.8763 R2... .8697
 
-ggplot(C1bind2 %>%  filter(dt > "2022-07-09 19:31:08 MST" & dt < "2022-07-10 19:31:08 MST")) + 
+ggplot(C1bind2 %>%  filter(dt > "2022-07-08 19:31:08 MST" & dt < "2022-07-09 19:31:08 MST")) + 
   geom_line(aes(x=dt, y=sr_lt), color="red") + 
-  geom_line(aes(x= dt-60*60, y=sr), color="darkred")
+  geom_line(aes(x= dt, y=sr), color="darkred")
 
 templt <- lt2023#[1:(27965-(35339-11805)+100),]
 tempus <- us2023#[1:4300,]
+ltextras <- templt[1,]
 i_offset=0
-for(i in 2:100000) {
+for(i in 2:11806) { #7442
   i=i-i_offset
   diff <- tempus$dt[i]-templt$dt[i]
   diff_lag <- tempus$dt[i]-templt$dt[i+1]
   diff_lead <- tempus$dt[i]-templt$dt[i-1]
   if(abs(diff_lag)<abs(diff)) {
+    ltextras <- rbind(ltextras, templt[i,])
     templt <- templt[-i,]
     i_offset=i_offset+1 #added this in because I think it should be there
+    ltextras <- rbind(ltextras, templt[i,])
   }
   if(abs(diff_lead)<abs(diff)) {
     tempus <- tempus[-i,]
@@ -383,16 +394,16 @@ for(i in 2:100000) {
 
 t <- templt %>% rename(dt_lt="dt", ws_lt="ws", sr_lt="sr", T_soil_lt="T_soil", T_1.00_lt="T_1.00")
 C1bind <- cbind(tempus[1:7443,], t)
-
+ltextras <- ltextras %>% rename(dt_lt="dt", ws_lt="ws", sr_lt="sr", T_soil_lt="T_soil", T_1.00_lt="T_1.00")
 
 #showing sr
 #get zenith of the sun
 C1bind <- C1bind %>% mutate(zenith=zenith_angle(doy=day_of_year(dt), lat=40.03, lon=-105.55, hour=hour(dt)))
 C1bind$time <- format(C1bind$dt, format = "%H:%M")
 C1bind <- C1bind %>% mutate(sr_eq=direct_solar_radiation(lat=40.03, doy=day_of_year(dt), elev=3014, t=hour(dt), t0=solar_noon(lon=-105.55, doy=day_of_year(dt))))
-ggplot(C1bind, aes(x=sr_lt, y=sr)) + geom_point()
+ggplot(C1bind, aes(x=sr_lt, y=sr)) + geom_point() + geom_smooth(method="lm")
 mod <- lm(sr~sr_lt, C1bind)
-summary(mod) #.6892 R2
+summary(mod) #.8841 R2
 
 ggplot(C1bind, aes(zenith,sr)) + geom_point()
 ggplot(C1bind, aes(hour(dt),sr)) + geom_point() + geom_smooth() #probably not a good sign? 
@@ -430,9 +441,57 @@ ggplot(C1bind, aes(x=dt_lt, format="%m/%d/%Y %H:%M")) +
 C1bindsr <- C1bind %>% mutate(sr_rat = sr/sr_lt) %>% filter(sr_rat < 1000)
 ggplot(C1bindsr, aes(x=dt_lt, y=sr/sr_lt)) + geom_line()
 
-ggplot(C1binds %>% filter(year(dt)==2022), aes(x=dt_lt, y=sr/sr_lt)) + geom_line()
+C1binds <- rbind(C1bind , C1bind2) #%>% select(-zenith, -time, -sr_eq)
 
-ggplot(C1binds %>% filter(year(dt)==2022 & dt > "2022-06-28 19:31:08 MST" & dt < "2022-07-04 19:31:08 MST"), aes(x=dt_lt)) + geom_line(aes(y=sr), color="blue") + geom_line(aes(y=sr_lt), color="green") 
+C1binds <- C1binds %>% mutate(yr=as.factor(year(dt)))
+
+C1bindsall <- plyr::rbind.fill(C1binds, ltextras, ltextras2)
+
+ggplot(C1binds, aes(x=T_1.00_lt, y=T_1.00)) + geom_point() + geom_smooth(method="lm")
+mod <- lm(T_1.00~T_1.00_lt, C1binds)
+summary(mod)
+
+C1bindsall <- C1bindsall  %>% mutate(T_1.00pred = T_1.00_lt*mod$coefficients[2] + mod$coefficients[1],
+                                         T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
+                                         use_origin = ifelse(is.na(T_1.00), "modelled", "direct"),
+                                         dtuse = as.POSIXct(ifelse(is.na(dt), dt_lt, dt), tz="MST")) #could also create a column that's a measurement of error
+
+C1bindsall <- C1bindsall  %>% mutate(yr=as.factor(year(dtuse)))
+
+C1bindsall <- unique(C1bindsall)
+C1bindsall <- C1bindsall[order(C1bindsall$dtuse),]
+is2remove <- c()
+for(i in 2:(length(C1bindsall$dtuse)-1)){
+  if(C1bindsall$use_origin[i]=="modelled"){
+    if(C1bindsall$use_origin[i-1]=="direct" & C1bindsall$use_origin[i+1]=="direct"){
+      is2remove <- c(is2remove, i)
+    }
+  }
+}
+
+C1bindsall2 <- C1bindsall[-is2remove,] 
+
+#what we are going to use
+ggplot(data= C1bindsall2 %>% filter(year(dtuse)==2023), aes(x=dtuse, color=use_origin, y=T_1.00use)) + geom_line(aes(group=1)) + theme_bw() + ggtitle("2023 C1 Air Temps")
+
+
+ggplot(C1bind2, aes(x=sr_lt, y=sr)) + geom_point() + geom_smooth(method="lm")
+mod <- lm(sr~sr_lt, C1bind2)
+summary(mod)
+
+C1bindsall2 <- C1bindsall2  %>% mutate(srpred = sr_lt*mod$coefficients[2] + mod$coefficients[1],
+                                         sruse = ifelse(is.na(sr), srpred, sr)) #could also create a column that's a measurement of error
+
+#what we are going to use
+ggplot(data= C1bindsall2 %>% filter(year(dtuse)==2023), aes(x=dt_lt, y=srpred)) + geom_line(color="blue") + theme_bw() + ggtitle("2023 C1 Solar Radiation")
+
+
+#really confused esp for 2022
+ggplot(C1binds %>% filter(year(dt)==2023), aes(x=dt, y=sr/sr_lt)) + geom_line()
+
+ggplot(C1binds %>% filter(year(dt)==2023 & dt > "2023-06-28 19:31:08 MST" & dt < "2023-07-04 19:31:08 MST"), aes(x=dt_lt)) + geom_line(aes(y=sr), color="blue") + geom_line(aes(y=sr_lt), color="green") #+ geom_line(aes(y=sr/sr_lt))
+
+ggplot(C1binds %>% filter(year(dt)==2023 & dt > "2023-06-28 19:31:08 MST" & dt < "2023-07-04 19:31:08 MST"), aes(x=dt_lt)) + geom_line(aes(y=sr/sr_lt))
 
 # 
 # #new idea -- line them up directly and then prepare to "roll" 
@@ -498,45 +557,43 @@ ggplot(C1binds %>% filter(year(dt)==2022 & dt > "2022-06-28 19:31:08 MST" & dt <
 # secondbind <- cbind(tempus[1:3716,], t)
 
 #SKIP?
-#' C1bind <- rbind(firstbind, secondbind)
-#' 
-#' ggplot(C1bind, aes(x=T_1.00_lt, y=T_1.00)) + geom_point() + geom_smooth(method="lm")
-#' mod <- lm(T_1.00~T_1.00_lt, C1bind)
-#' summary(mod)
-#' 
-#' us_add <- us2023[4201:4210,] #for now there's a little mismatch here bc we could line lt up... ignoring it
-#' lt_add <-lt2023[(27965-(35339-11805)+61):(30838-(35339-11805)-1),] %>% rename(dt_lt="dt", ws_lt="ws", sr_lt="sr", T_soil_lt="T_soil", T_1.00_lt="T_1.00")
-#' C1all <- plyr::rbind.fill(C1bind, us_add, lt_add)
-#' 
-#' C1all <- C1all %>% mutate(niwotpred = T_1.00_lt*mod$coefficients[2] + mod$coefficients[1])
-#' 
-#' 
-#' 
-#' ggplot(C1all, aes(x=dt_lt, format="%m/%d/%Y %H:%M")) + 
-#'   #  geom_line(aes(y=Tb_pred, color="Ghop temp")) +
-#'   #  geom_line(aes(y=mbsoil, color="Soil model temp")) +
-#'   #  geom_line(aes(y=mbvegh, color="Veg model temp")) +
-#'   geom_line(aes(y=T_1.00, color="ours")) + #other options: other hmps, airtemp_as_1.7_avg
-#'   geom_line(aes(y=niwotpred, color = "niw")) +
-#'   geom_line(aes(y=niwotpred-T_1.00, color = "err")) +
-#'   scale_y_continuous(
-#'     # Features of the first axis
-#'     name = "Air temperature (C)") +
-#'   scale_color_manual(name='Climate vars',
-#'                      breaks=c('ours', 'as1.7'),
-#'                      values=c(#'Ghop temp'='green',
-#'                        #'Soil model temp' = 'darkseagreen',
-#'                        #'Veg model temp' = 'darkgreen',
-#'                        'ours' = 'blue', 
-#'                        'niw' = 'lightgreen',
-#'                        err="lightgray"))
-#' 
-#' ggplot(C1all, aes(x=dt_lt, y=niwotpred-T_1.00)) + geom_line()
-#' 
+# C1bind <- rbind(firstbind, secondbind)
+# 
+# ggplot(C1bind, aes(x=T_1.00_lt, y=T_1.00)) + geom_point() + geom_smooth(method="lm")
+# mod <- lm(T_1.00~T_1.00_lt, C1bind)
+# summary(mod)
+# 
+# us_add <- us2023[4201:4210,] #for now there's a little mismatch here bc we could line lt up... ignoring it
+# lt_add <-lt2023[(27965-(35339-11805)+61):(30838-(35339-11805)-1),] %>% rename(dt_lt="dt", ws_lt="ws", sr_lt="sr", T_soil_lt="T_soil", T_1.00_lt="T_1.00")
+# C1all <- plyr::rbind.fill(C1bind, us_add, lt_add)
+# 
+# C1all <- C1all %>% mutate(niwotpred = T_1.00_lt*mod$coefficients[2] + mod$coefficients[1])
+# 
+# 
+# 
+# ggplot(C1all, aes(x=dt_lt, format="%m/%d/%Y %H:%M")) + 
+#   #  geom_line(aes(y=Tb_pred, color="Ghop temp")) +
+#   #  geom_line(aes(y=mbsoil, color="Soil model temp")) +
+#   #  geom_line(aes(y=mbvegh, color="Veg model temp")) +
+#   geom_line(aes(y=T_1.00, color="ours")) + #other options: other hmps, airtemp_as_1.7_avg
+#   geom_line(aes(y=niwotpred, color = "niw")) +
+#   geom_line(aes(y=niwotpred-T_1.00, color = "err")) +
+#   scale_y_continuous(
+#     # Features of the first axis
+#     name = "Air temperature (C)") +
+#   scale_color_manual(name='Climate vars',
+#                      breaks=c('ours', 'as1.7'),
+#                      values=c(#'Ghop temp'='green',
+#                        #'Soil model temp' = 'darkseagreen',
+#                        #'Veg model temp' = 'darkgreen',
+#                        'ours' = 'blue', 
+#                        'niw' = 'lightgreen',
+#                        err="lightgray"))
+# 
+# ggplot(C1all, aes(x=dt_lt, y=niwotpred-T_1.00)) + geom_line()
+# 
 
-C1binds <- rbind(C1bind %>% select(-zenith, -time, -sr_eq), C1bind2)
 
-C1binds <- C1binds %>% mutate(yr=as.factor(year(dt)))
 
 ggplot(C1binds, aes(x=T_1.00_lt, y=T_1.00, color=yr)) + geom_point(alpha=.3) + geom_smooth(method="lm")
 #temperatures luckily seem to agree from year to year pretty well (not too much diff in relationship with weather station)
@@ -544,14 +601,15 @@ ggplot(C1binds, aes(x=T_1.00_lt, y=T_1.00, color=yr)) + geom_point(alpha=.3) + g
 mod <- lm(T_1.00~T_1.00_lt * yr, C1binds)
 summary(mod) #and yet the year does make  significant difference (though it barely affects R2)
 
-
+ggplot(C1binds, aes(x=T_1.00_lt, y=T_1.00)) + geom_point(alpha=.3) + geom_smooth(method="lm")
 mod <- lm(T_1.00~T_1.00_lt, C1binds)
 summary(mod) 
 
-ggplot(C1bind, aes(x=T_soil_lt, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
-#temperatures luckily seem to agree from year to year pretty well (not too much diff in relationship with weather station)
-mod <- lm(T_soil~T_soil_lt, C1bind)
-summary(mod) #.488 R2 for 2022, much less for 2023 (5 inches in vs surface temp)
+
+
+ggplot(C1bind2, aes(x=T_soil_lt, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+mod <- lm(T_soil~T_soil_lt, C1bind2)
+summary(mod) #.488 R2 for 2022, much less for 2023 (5 inches in vs surface temp)... down to .4149 after shift by an hr
 
 
 #now going for Eldo
@@ -573,6 +631,8 @@ nrel_less <- nrel %>%
             GA=mean(Global..Accumulated...kWhr.m.2.), T_2.00 = mean(Temperature...2m..deg.C.),
             WS_2.00=mean(Avg.Wind.Speed...2m..m.s.), surf=mean(Est.Surface.Roughness..m.))
 
+nrel_less$dt <- nrel_less$dt + 60*60
+
 nrel_win <- nrel_less %>% filter(dt>as.Date("5/15/2022 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("10/01/2022 12:21", format="%m/%d/%Y %H:%M") | 
                                       (dt>as.Date("5/15/2023 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("10/01/2023 12:21", format="%m/%d/%Y %H:%M")))
 
@@ -582,23 +642,23 @@ nrel2023 <- nrel_win %>% filter(year(dt)==2023)
 nrel2023 <- nrel2023 %>% mutate(T_1.00=air_temp_profile(T_r=T_2.00, u_r=WS_2.00, zr=2, z0=surf_r, z=1, T_s=T_2.00)) #FOR NOW putting air temp for soil temp because it's unlikely to affect it much at 1m
 
 tempus <- usEldo
-tempnr <- nrel2023[4214:length(nrel2023$dt),]
+tempnr <- nrel2023[4214:length(nrel2023$dt),] #strange that this didn't change when I added an hour
 
-nrextras <- tempnr[1:4213,]
+nrextras2 <- tempnr[1:4213,]
 
 i_offset=0
-for(i in 2:10000) { #8000
+for(i in 2:9705) { #8000 #3273
   print(i)
   i=i-i_offset
   diff <- tempus$dt[i]-tempnr$dt[i]
   diff_lag <- tempus$dt[i]-tempnr$dt[i+1]
   diff_lead <- tempus$dt[i]-tempnr$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    nrextras <- rbind(nrextras, tempnr[i,])
+    nrextras2 <- rbind(nrextras2, tempnr[i,])
     tempnr <- tempnr[-i,]
     i_offset=i_offset+1
     print("lag")
-    nrextras <- rbind(nrextras, tempnr[i,])
+    nrextras2 <- rbind(nrextras2, tempnr[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
@@ -620,11 +680,11 @@ for(i in 2:10000) { #8000
 #I think they might be matched up to each other 3273 rows
 
 
-nrextras <- rbind(nrextras, tempnr[3274:length(tempnr$dt),])
+nrextras2 <- rbind(nrextras2, tempnr[3274:length(tempnr$dt),])
 
 t <- tempnr %>% rename(dt_nr="dt", ws_nr="WS_2.00", T_1.00_nr="T_1.00")
 
-nrextras <- nrextras %>% rename(dt_nr="dt", ws_nr="WS_2.00", T_1.00_nr="T_1.00")
+nrextras2 <- nrextras2 %>% rename(dt_nr="dt", ws_nr="WS_2.00", T_1.00_nr="T_1.00")
 
 
 #issue with amount... trace bqck by looking at templt and tempus
@@ -687,12 +747,12 @@ nrel2022 <- nrel2022 %>% mutate(T_1.00=air_temp_profile(T_r=T_2.00, u_r=WS_2.00,
 usEldo <- all %>% filter(site=="Eldo", year(dt)==2022)
 
 tempus <- usEldo
-tempnr <- nrel2022[1359:length(nrel2022$dt),]
+tempnr <- nrel2022[1353:length(nrel2022$dt),]
 
-nrextras <- tempnr[1:1359,]
+nrextras <- tempnr[1:1352,]
 
 i_offset=0
-for(i in 2:40000) { #8000
+for(i in 2:33806) { #8000
   print(i)
   i=i-i_offset
   diff <- tempus$dt[i]-tempnr$dt[i]
@@ -719,7 +779,7 @@ for(i in 2:40000) { #8000
   print("diff")
   print(abs(diff))
 }
-
+#nr extras should be different
 nrextras <- rbind(nrextras, tempnr[16905:length(tempnr$dt),])
 
 t <- tempnr %>% rename(dt_nr="dt", ws_nr="WS_2.00", T_1.00_nr="T_1.00")
@@ -732,9 +792,39 @@ Eldobind2 <- cbind(tempus, t[1:16904,])
 
 Eldobinds <- rbind(Eldobind, Eldobind2)
 
+Eldobindsall <- plyr::rbind.fill(Eldobinds, nrextras, nrextras2)
+
 ggplot(Eldobinds, aes(x=T_1.00_nr, y=T_1.00, color=as.factor(year(dt)))) + geom_point(alpha=.3) + geom_smooth(method="lm")
-mod <- lm(T_1.00~T_1.00_nr*year(dt), Eldobinds)
+mod <- lm(T_1.00~T_1.00_nr, Eldobinds) #could have *year(dt) but excluding it bc doesn't make a big diff
 summary(mod)
+
+ggplot(Eldobinds, aes(x=T_1.00_nr, y=T_1.00)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+mod <- lm(T_1.00~T_1.00_nr, Eldobinds) #could have *year(dt) but excluding it bc doesn't make a big diff
+summary(mod)
+
+Eldobindsall <- Eldobindsall  %>% mutate(T_1.00pred = T_1.00_nr*mod$coefficients[2] + mod$coefficients[1],
+                      T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
+                      use_origin = ifelse(is.na(T_1.00), "modelled", "direct"),
+                      dtuse = as.POSIXct(ifelse(is.na(dt), dt_nr, dt), tz="MST")) #could also create a column that's a measurement of error
+
+
+Eldobindsall <- unique(Eldobindsall)
+Eldobindsall <- Eldobindsall[order(Eldobindsall$dtuse),]
+is2remove <- c()
+for(i in 1:(length(Eldobindsall$dtuse)-1)){
+  if(Eldobindsall$use_origin[i]=="modelled"){
+    if(Eldobindsall$use_origin[i-1]=="direct" & Eldobindsall$use_origin[i+1]=="direct"){
+      is2remove <- c(is2remove, i)
+    }
+  }
+}
+
+Eldobindsall <- Eldobindsall[-is2remove,] 
+
+ggplot(Eldobindsall %>% filter(year(dtuse)==2023), aes(x=dtuse)) + geom_line(aes(y=T_1.00), alpha=.5) + geom_line(aes(y=T_1.00pred),color="red", alpha=.5) + theme_bw() 
+
+#what we are going to use
+ggplot(data= Eldobindsall %>% filter(year(dtuse)==2023), aes(x=dtuse, color=use_origin, y=T_1.00use)) + geom_line(aes(group=1)) + theme_bw() + ggtitle("2023 Eldo Air Temps")
 
 
 ggplot(Eldobind, aes(x=GH_sr, y=sr, color=hour(dt))) + geom_point() #+ geom_smooth(method="lm")
@@ -745,9 +835,17 @@ summary(mod)
 #cut off at ~8/28 end of day for solar radiation (27797 index) (2023) -- sr issues
 Eldobind2 <- Eldobind2 %>% filter(dt<="2022-08-28 19:31:08 MST")
 
-ggplot(Eldobind2, aes(x=GH_sr, y=sr)) + geom_point() #+ geom_smooth(method="lm")
+ggplot(Eldobind2, aes(x=GH_sr, y=sr)) + geom_point() + geom_smooth(method="lm")
 mod <- lm(sr~GH_sr, Eldobind2)
 summary(mod)
+
+Eldobindsall <- Eldobindsall  %>% mutate(srpred = GH_sr*mod$coefficients[2] + mod$coefficients[1],
+                                         sruse = ifelse(is.na(sr), srpred, sr)) #could also create a column that's a measurement of error
+
+#what we are going to use
+ggplot(data= Eldobindsall %>% filter(year(dtuse)==2023), aes(x=dt_nr, y=srpred)) + geom_line(color="blue") + theme_bw() + ggtitle("2023 Eldo Solar Radiation")
+
+
 
 #note to self: how do I make relationship with time linear? would zenith do it?
 
@@ -766,7 +864,7 @@ hydroS23 <- read_csv("hydro_Met_SF_2023.csv")
 
 hydroS <- rbind(hydroS22, hydroS23)
 
-hydroS$TIMESTAMP <- as.POSIXct(hydroS$TIMESTAMP, format="%m/%d/%Y %H:%M")
+hydroS$dt <- as.POSIXct(hydroS$TIMESTAMP, format="%m/%d/%Y %H:%M") + 60*60
 
 #random thing -- let's plot all the solar radiations (i.e. at least C1 equivalent and Eldo equivalent)
 #as.POSIXct(paste(DATE..MM.DD.YYYY., MST), format="%m/%d/%Y %H:%M", tz="MST")
@@ -783,8 +881,8 @@ ggplot() +
 
 
 ggplot() + 
-  geom_line(data=all %>% filter(site=="Eldo" & dt>"2022-06-28 19:31:08 MST" & dt < "2022-07-04 19:31:08 MST"), aes(x=dt, y=sr), color="darkred") +
-  geom_line(data=nrel_less %>% filter(dt>"2022-06-28 19:31:08 MST" & dt < "2022-07-04 19:31:08 MST"), aes(x=dt, y=GH_sr), color="red")
+  geom_line(data=all %>% filter(site=="Eldo" & dt>"2022-07-10 19:31:08 MST" & dt < "2022-07-11 19:31:08 MST"), aes(x=dt, y=sr), color="darkred") +
+  geom_line(data=nrel_less %>% filter(dt>"2022-07-10 19:31:08 MST" & dt < "2022-07-11 19:31:08 MST"), aes(x=dt, y=GH_sr), color="red")
 
 
 ggplot() + 
@@ -800,3 +898,97 @@ ggplot() +
 ggplot() + 
   geom_line(data=all %>% filter(site=="C1" & dt>"2023-07-07 19:31:08 MST" & dt < "2023-07-08 19:31:08 MST"), aes(x=dt-60*60, y=sr), color="darkblue") +
   geom_line(data=dlter %>% filter(dt>"2023-07-07 19:31:08 MST" & dt < "2023-07-08 19:31:08 MST"), aes(x=dt, y=sr), color="lightblue")
+
+
+
+#nrel2022 <- nrel2022 %>% mutate(T_1.00=air_temp_profile(T_r=T_2.00, u_r=WS_2.00, zr=2, z0=surf_r, z=1, T_s=T_2.00)) #FOR NOW putting air temp for soil temp because it's unlikely to affect it much at 1m
+
+usB1 <- all %>% filter(site=="B1", year(dt)==2022)
+
+hydroS22 <- hydroS %>% filter(year(dt)==2022)
+
+tempus <- usB1
+temphydro <- hydroS22[21953:length(hydroS22$dt),]
+
+hyextras <- hydroS22[19506:21952,]
+
+i_offset=0
+for(i in 2:32048) { #8000
+  print(i)
+  i=i-i_offset
+  diff <- tempus$dt[i]-temphydro$dt[i]
+  diff_lag <- tempus$dt[i]-temphydro$dt[i+1]
+  diff_lead <- tempus$dt[i]-temphydro$dt[i-1]
+  if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
+    hyextras <- rbind(hyextras, temphydro[i,])
+    temphydro <- temphydro[-i,]
+    i_offset=i_offset+1
+    print("lag")
+    hyextras <- rbind(hyextras, temphydro[i,])
+  }
+  if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
+    #print("lead") # I think we never used... probably doesn't work
+    #break
+    tempus <- tempus[-i,]
+    i_offset=i_offset+1
+    print("lead")
+  }
+  # print(length(templt$dt))
+  # print(length(tempus$dt))
+  print("i")
+  print(i)
+  print("diff")
+  print(abs(diff))
+}
+
+#ggplot()
+
+
+#nrextras2 <- rbind(nrextras2, tempnr[3274:length(tempnr$dt),])
+
+t <- temphydro %>% rename(dt_hy="dt", ws_hy="WINDSPEED(m/s)-2.5M(AVG)", T_2.00_hy="AIRTEMP(C)-2.5M(AVG)")
+
+hyextras <- hyextras %>% rename(dt_hy="dt", ws_hy="WINDSPEED(m/s)-2.5M(AVG)", T_2.00_hy="AIRTEMP(C)-2.5M(AVG)")
+
+
+#issue with amount... trace bqck by looking at templt and tempus
+B1bind <- cbind(tempus, t[1:16013,])
+
+ggplot(B1bind, aes(x=`IN SW RAD(W/m^2)-2.5M(AVG)`, y=sr)) + geom_point() + geom_smooth(method="lm")
+mod <- lm(sr~`IN SW RAD(W/m^2)-2.5M(AVG)`, B1bind)
+summary(mod)
+
+B1bindsall <- plyr::rbind.fill(B1bind, hydroS %>% filter(year(dt)==2023 & dt>as.Date("5/15/2023 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("10/01/2023 12:21", format="%m/%d/%Y %H:%M"))) #, all %>% filter(site=="B1", year(dt)==2023)
+
+
+#we need hydro from 2023
+
+B1bindsall <- B1bindsall  %>% mutate(srpred = `IN SW RAD(W/m^2)-2.5M(AVG)`*mod$coefficients[2] + mod$coefficients[1],
+                                     sruse = ifelse(is.na(sr), srpred, sr),
+                                     dtuse=as.POSIXct(ifelse(is.na(dt), dt_hy, dt), tz="MST")) #could also create a column that's a measurement of error
+
+
+
+ggplot(data= B1bindsall %>% filter(year(dtuse)==2023), aes(x=dtuse, y=sruse)) + geom_line(color="blue") + theme_bw() + ggtitle("2023 B1 Solar Radiation")
+
+
+#soil temp thing... need to make a thing first
+
+all <- all %>% mutate(T_soilest = soil_temperature(
+  z_r.intervals = 12,
+  z_r=1,
+  z=2, #what do the intervals mean?
+  T_a=T_1.00,
+  u=ws,
+  Tsoil0=25, # have to create this as a var... or just make up a #
+  z0=surf_r,
+  SSA=.7, #guess
+  TimeIn=hour(dt),
+  S=sruse,
+  water_content = 0.2, #.2 here
+  air_pressure=71, #this is for C1
+  rho_so = 1620,
+  shade = TRUE
+))
+
+ggplot(all, aes(x=dt, y=T_soilest)) + geom_line() + facet_grid(site~year(dt))

@@ -101,7 +101,7 @@ summary(mod)
 ggplot(w2dctrl, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
 
 mod2<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrl)
-summary(mod)
+summary(mod2)
 
 morew2d <- read_csv("Morew2d.csv")
 
@@ -112,6 +112,28 @@ w2dctrlmoremore <- rbind(morew2d %>% select(wet_mass, `wg_drymass (mg)`, plot_ID
 ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`))) + geom_point() + geom_smooth(method="lm") 
 
 ggplot(morew2d,aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm")
+
+ggplot(morew2d,aes(x=wet_mass, y=as.numeric(old_dry), color=plot_ID)) + geom_point() + geom_smooth(method="lm")
+
+mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrlmoremore)
+summary(mod)
+
+mod<- lm(`wg_drymass (mg)`~ 0 + wet_mass + plot_ID, w2dctrlmoremore) #trying to force it through 0
+summary(mod)
+
+ggplot(morew2d,aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm",formula=y~0+x)
+
+ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm",formula=y~0+x)
+
+newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
+newdf$wet_mass <- as.numeric(newdf$wet_mass)
+predictions <- predict(mod, newdf, 
+                       interval = "prediction", level = .95) #+/- 15mg
+predictions2 <- predict(mod2, newdf, 
+                        interval = "prediction", level = .95) #also +/- 15, general range of predictions is p similar
+
+#geom_smooth(method="lm",formula=y~0+x)
+
 
 #these are quite wide predictions :(
 newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
