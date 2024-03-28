@@ -63,3 +63,58 @@ climateuse %>% group_by(site, year(dtuse)) %>% summarize(mean_ours=mean(ws, na.r
                                                          median_ours=median(ws, na.rm=TRUE),
                                                          mean_theirs=mean(ws_src_og, na.rm=TRUE),
                                                          median_theirs=median(ws_src_og, na.rm=TRUE))
+
+wind_speed_profile_neutral(u_r=.5, zr=1, z0=surf_r, z=.1)
+
+
+#time for looking at soil
+El23 <- El %>% filter(year(dtuse)==2023)
+mod <- lm(T_soil~T_soilest, El23)
+summary(mod)
+
+ggplot(El23, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+
+ggplot(El23 %>% filter(dtuse>"2023-07-20 19:31:08 MST" & dtuse<"2023-07-25 19:31:08 MST"), aes(x=dtuse)) + 
+  geom_line(aes(y=T_soil), color="red") +
+  geom_line(aes(y=T_soilest), color="blue") + theme_bw() + ggtitle("2023 Eldo soil zoom Jul")
+
+#interesting... what disconnect is happening here
+ggplot(El23 %>% filter(dtuse>"2023-08-13 19:31:08 MST" & dtuse<"2023-08-18 19:31:08 MST"), aes(x=dtuse)) + 
+  geom_line(aes(y=T_soil), color="red") +
+  geom_line(aes(y=T_soilest), color="blue") + theme_bw() + ggtitle("2023 Eldo soil zoom Aug")
+
+B123 <- B1 %>% filter(year(dtuse)==2023)
+mod <- lm(T_soil~T_soilest, B123)
+summary(mod)
+
+ggplot(B123, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+
+ggplot(B123 %>% filter(dtuse>"2023-06-20 19:31:08 MST" & dtuse<"2023-06-25 19:31:08 MST"), aes(x=dtuse)) + 
+  geom_line(aes(y=T_soil), color="red") +
+  geom_line(aes(y=T_soilest), color="blue") + theme_bw() + ggtitle("2023 B1 soil zoom Jun")
+
+ggplot(B123 %>% filter(dtuse>"2023-08-13 19:31:08 MST" & dtuse<"2023-08-18 19:31:08 MST"), aes(x=dtuse)) + 
+  geom_line(aes(y=T_soil), color="red") +
+  geom_line(aes(y=T_soilest), color="blue") + theme_bw() + ggtitle("2023 B1 soil zoom Aug")
+
+C123 <- C1 %>% filter(year(dtuse)==2023)
+mod <- lm(T_soil~T_soilest, C123)
+summary(mod)
+
+ggplot(C123, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+
+ggplot(C123 %>% filter(dtuse>"2023-06-20 19:31:08 MST" & dtuse<"2023-06-25 19:31:08 MST"), aes(x=dtuse)) + 
+  geom_line(aes(y=T_soil), color="red") +
+  geom_line(aes(y=T_soilest), color="blue") + theme_bw() + ggtitle("2023 C1 soil zoom Jun")
+
+ggplot(C123 %>% filter(dtuse>"2023-08-05 19:31:08 MST" & dtuse<"2023-08-10 19:31:08 MST"), aes(x=dtuse)) + 
+  geom_line(aes(y=T_soil), color="red") +
+  geom_line(aes(y=T_soilest), color="blue")+ theme_bw() + ggtitle("2023 C1 soil zoom Aug")
+
+
+climateuse$dt_noyr <- climateuse$dtuse
+year(climateuse$dt_noyr) <- 2024
+
+ggplot(climateuse, aes(x=dt_noyr, y=T_soilest)) + 
+  geom_line(color="blue") +
+  facet_grid(site~year(dtuse)) + ggtitle("Estimated soil temps")
