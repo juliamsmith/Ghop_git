@@ -72,7 +72,11 @@ El23 <- El %>% filter(year(dtuse)==2023)
 mod <- lm(T_soil~T_soilest, El23)
 summary(mod)
 
-ggplot(El23, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+ggplot(El23, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm", color="green") + 
+  geom_abline(intercept=0, slope=1, color="purple") 
+
+mean(abs(El23$T_soil-El23$T_soilest))
+mean(abs(El23$T_soil-(El23$T_soilest*mod$coefficients[2]+mod$coefficients[1])))
 
 ggplot(El23 %>% filter(dtuse>"2023-07-20 19:31:08 MST" & dtuse<"2023-07-25 19:31:08 MST"), aes(x=dtuse)) + 
   geom_line(aes(y=T_soil), color="red") +
@@ -87,7 +91,12 @@ B123 <- B1 %>% filter(year(dtuse)==2023)
 mod <- lm(T_soil~T_soilest, B123)
 summary(mod)
 
-ggplot(B123, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+ggplot(B123, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm", color="green") + 
+  geom_abline(intercept=0, slope=1, color="purple") 
+
+B123_filt <- B123 %>% filter(!is.na(T_soil))
+mean(abs(B123_filt$T_soil-B123_filt$T_soilest))
+mean(abs(B123_filt$T_soil-(B123_filt$T_soilest*mod$coefficients[2]+mod$coefficients[1])))
 
 ggplot(B123 %>% filter(dtuse>"2023-06-20 19:31:08 MST" & dtuse<"2023-06-25 19:31:08 MST"), aes(x=dtuse)) + 
   geom_line(aes(y=T_soil), color="red") +
@@ -101,7 +110,12 @@ C123 <- C1 %>% filter(year(dtuse)==2023)
 mod <- lm(T_soil~T_soilest, C123)
 summary(mod)
 
-ggplot(C123, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm")
+ggplot(C123, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm", color="green") + 
+  geom_abline(intercept=0, slope=1, color="purple") 
+
+C123_filt <- C123 %>% filter(!is.na(T_soil))
+mean(abs(C123_filt$T_soil-C123_filt$T_soilest))
+mean(abs(C123_filt$T_soil-(C123_filt$T_soilest*mod$coefficients[2]+mod$coefficients[1])))
 
 ggplot(C123 %>% filter(dtuse>"2023-06-20 19:31:08 MST" & dtuse<"2023-06-25 19:31:08 MST"), aes(x=dtuse)) + 
   geom_line(aes(y=T_soil), color="red") +
