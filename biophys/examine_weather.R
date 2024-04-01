@@ -132,3 +132,5 @@ year(climateuse$dt_noyr) <- 2024
 ggplot(climateuse, aes(x=dt_noyr, y=T_soilest)) + 
   geom_line(color="blue") +
   facet_grid(site~year(dtuse)) + ggtitle("Estimated soil temps")
+
+

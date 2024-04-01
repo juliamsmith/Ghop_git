@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lme4)
 
+setwd("C:/Users/smith/Desktop/Ghop_git") #set wd to project directory
 
 dry <- read_csv("TPC/DigestionDryMasses_rough.csv")
 wetMB <- read_csv("TPC/MB_WetMasses_rough.csv")
@@ -75,73 +76,77 @@ ggplot(mrg_refinedforwg %>% filter(fecesdry/(avgbeforedry-wgdry)>-5 & fecesdry/(
 ## NOW I'd like to do account for plot and wet mass
 wg <- merge(wet, dry, by.x="wg_ID", by.y="sample_num")
 
-#Wet-to-dry control (first just MB)
-w2dctrl <- wg %>% filter(startsWith(wg_ID, "WG_"))
-w2dctrl$wet_mass <- as.numeric(w2dctrl$wet_mass)
-w2dctrl$`wg_drymass (mg)` <- as.numeric(w2dctrl$`wg_drymass (mg)`)
-w2dctrl$wet_mass <- as.numeric(w2dctrl$wet_mass)
-w2dctrl$wet_mass[!is.numeric(w2dctrl$wet_mass)] <- NA
-
-#read in w2d see wettodrylm
-setwd("G:/Shared drives/RoL_FitnessConstraints/projects/DigestionTPC")
-w2d <- read_csv("Data/WetToDryJune2023.csv")
+# #Wet-to-dry control (first just MB)
+# w2dctrl <- wg %>% filter(startsWith(wg_ID, "WG_"))
+# w2dctrl$wet_mass <- as.numeric(w2dctrl$wet_mass)
+# w2dctrl$`wg_drymass (mg)` <- as.numeric(w2dctrl$`wg_drymass (mg)`)
+# w2dctrl$wet_mass <- as.numeric(w2dctrl$wet_mass)
+# w2dctrl$wet_mass[!is.numeric(w2dctrl$wet_mass)] <- NA
+# 
+# #read in w2d see wettodrylm
+# setwd("G:/Shared drives/RoL_FitnessConstraints/projects/DigestionTPC")
+# w2d <- read_csv("Data/WetToDryJune2023.csv")
 
 setwd("C:/Users/smith/Desktop/Ghop_git/TPC")
 
-w2dadd <- w2d %>% select(-WG_num) %>% rename(wet_mass="Wet_mass_g", `wg_drymass (mg)`="Dry_mass_mg", plot_ID="change_q")
-
-w2dctrlmore <- rbind(w2dctrl %>% select(wet_mass, `wg_drymass (mg)`, plot_ID), w2dadd)
-
-ggplot(w2dctrlmore, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
-
-mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrlmore)
-summary(mod)
-
-
-ggplot(w2dctrl, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
-
-mod2<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrl)
-summary(mod2)
+# w2dadd <- w2d %>% select(-WG_num) %>% rename(wet_mass="Wet_mass_g", `wg_drymass (mg)`="Dry_mass_mg", plot_ID="change_q")
+# 
+# w2dctrlmore <- rbind(w2dctrl %>% select(wet_mass, `wg_drymass (mg)`, plot_ID), w2dadd)
+# 
+# ggplot(w2dctrlmore, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
+# 
+# mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrlmore)
+# summary(mod)
+# 
+# 
+# ggplot(w2dctrl, aes(x=wet_mass, y=`wg_drymass (mg)`)) + geom_point() + geom_smooth(method="lm") 
+# 
+# mod2<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrl)
+# summary(mod2)
 
 morew2d <- read_csv("Morew2d.csv")
 
 morew2d <- morew2d %>% select(-ID_prime, -rng, -notes)
 
-w2dctrlmoremore <- rbind(morew2d %>% select(wet_mass, `wg_drymass (mg)`, plot_ID), w2dctrlmore)
-
-ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`))) + geom_point() + geom_smooth(method="lm") 
+# w2dctrlmoremore <- rbind(morew2d %>% select(wet_mass, `wg_drymass (mg)`, plot_ID), w2dctrlmore)
+# 
+# ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`))) + geom_point() + geom_smooth(method="lm") 
 
 ggplot(morew2d,aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm")
 
 ggplot(morew2d,aes(x=wet_mass, y=as.numeric(old_dry), color=plot_ID)) + geom_point() + geom_smooth(method="lm")
 
-mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrlmoremore)
+# mod<- lm(`wg_drymass (mg)`~ wet_mass + plot_ID, w2dctrlmoremore)
+# summary(mod)
+# 
+# mod<- lm(`wg_drymass (mg)`~ 0 + wet_mass + plot_ID, w2dctrlmoremore) #trying to force it through 0
+# summary(mod)
+
+ggplot(morew2d,aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`))) + geom_point() + geom_smooth(method="lm",formula=y~0+x, se=FALSE) + geom_smooth(method="lm", se=FALSE)
+
+#this one!!
+mod<- lm(`wg_drymass (mg)`~ 0+ wet_mass, morew2d)
 summary(mod)
 
-mod<- lm(`wg_drymass (mg)`~ 0 + wet_mass + plot_ID, w2dctrlmoremore) #trying to force it through 0
-summary(mod)
-
-ggplot(morew2d,aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm",formula=y~0+x)
-
-ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm",formula=y~0+x)
+#ggplot(w2dctrlmoremore, aes(x=wet_mass, y=as.numeric(`wg_drymass (mg)`), color=plot_ID)) + geom_point() + geom_smooth(method="lm",formula=y~0+x)
 
 newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
 newdf$wet_mass <- as.numeric(newdf$wet_mass)
 predictions <- predict(mod, newdf, 
                        interval = "prediction", level = .95) #+/- 15mg
-predictions2 <- predict(mod2, newdf, 
-                        interval = "prediction", level = .95) #also +/- 15, general range of predictions is p similar
+# predictions2 <- predict(mod2, newdf, 
+#                         interval = "prediction", level = .95) #also +/- 15, general range of predictions is p similar
 
 #geom_smooth(method="lm",formula=y~0+x)
 
 
-#these are quite wide predictions :(
-newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
-newdf$wet_mass <- as.numeric(newdf$wet_mass)
-predictions <- predict(mod, newdf, 
-                       interval = "prediction", level = .95)
-predictions2 <- predict(mod2, newdf, 
-                       interval = "prediction", level = .95)
+# #these are quite wide predictions :(
+# newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
+# newdf$wet_mass <- as.numeric(newdf$wet_mass)
+# predictions <- predict(mod, newdf, 
+#                        interval = "prediction", level = .95)
+# predictions2 <- predict(mod2, newdf, 
+#                        interval = "prediction", level = .95)
 
 #add predicted dry masses
 wgnpred <- cbind(wg, predictions)
