@@ -145,18 +145,18 @@ surf_r <- surface_roughness(u_r=c(wslow,	wsmed,	wshi), zr=c(.57, .82, 1.05))
 ## nrel data for Eldo (nrel) ISSUES? ####
 
 ### 2022 and 2023 #### 
-nrel <- read.csv("G:/Shared drives/RoL_FitnessConstraints/projects/ReciprocalTransplant_2023/WS/nrel/nrel_eldo.csv")
+nrel0 <- read.csv("G:/Shared drives/RoL_FitnessConstraints/projects/ReciprocalTransplant_2023/WS/nrel/nrel_eldo.csv")
 nrel2 <- read.csv("G:/Shared drives/RoL_FitnessConstraints/projects/ReciprocalTransplant_2023/WS/nrel/nrel_eldo2.csv")
-nrel <- rbind(nrel, nrel2)
-nrel <- distinct(nrel)
+nrel0 <- rbind(nrel0, nrel2)
+nrel0 <- distinct(nrel0)
 #usEldo <- all %>% filter(site=="Eldo", year(dt)==2023)
 thing <- c()
 for(i in 1:72719) { #Have to re-think these #s 72864
   thing <- c(thing, rep(i, 10))
 }
 thing <- c(thing, 72720) #72865 rep(, 1)
-nrel$group <- thing
-nrel_less <- nrel %>% 
+nrel0$group <- thing
+nrel_less <- nrel0 %>% 
   group_by(group) %>% 
   summarize(dt=mean(as.POSIXct(paste(DATE..MM.DD.YYYY., MST), format="%m/%d/%Y %H:%M", tz="MST")), 
             sr=mean(Global.Horizontal..W.m.2.), 
@@ -298,29 +298,29 @@ dlter <- dlter %>% mutate(T_1.00=air_temp_profile(T_r=T_1.7, u_r=ws_1.7, zr=1.7,
 nrel2022 <- nrel %>% filter(year(dt)==2022)
 usEldo <- all %>% filter(site=="Eldo", year(dt)==2022)
 
-tempus <- usEldo
-tempnr <- nrel2022[1353:length(nrel2022$dt),]
+tempEl22 <- usEldo
+tempnr22 <- nrel2022[1353:length(nrel2022$dt),]
 
-nrextras22 <- tempnr[1:1352,]
+nrextras22 <- tempnr22[1:1352,]
 
 i_offset=0
 for(i in 2:33806) { #8000
   print(i)
   i=i-i_offset
-  diff <- tempus$dt[i]-tempnr$dt[i]
-  diff_lag <- tempus$dt[i]-tempnr$dt[i+1]
-  diff_lead <- tempus$dt[i]-tempnr$dt[i-1]
+  diff <- tempEl22$dt[i]-tempnr22$dt[i]
+  diff_lag <- tempEl22$dt[i]-tempnr22$dt[i+1]
+  diff_lead <- tempEl22$dt[i]-tempnr22$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    nrextras22 <- rbind(nrextras22, tempnr[i,])
-    tempnr <- tempnr[-i,]
+    nrextras22 <- rbind(nrextras22, tempnr22[i,])
+    tempnr22 <- tempnr22[-i,]
     i_offset=i_offset+1
     print("lag")
-    nrextras22 <- rbind(nrextras22, tempnr[i,])
+    nrextras22 <- rbind(nrextras22, tempnr22[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
     #break
-    tempus <- tempus[-i,]
+    tempEl22 <- tempEl22[-i,]
     i_offset=i_offset+1
     print("lead")
   }
@@ -330,14 +330,14 @@ for(i in 2:33806) { #8000
   print(abs(diff))
 }
 #nr extras should be different
-nrextras22 <- rbind(nrextras22, tempnr[16905:length(tempnr$dt),])
+nrextras22 <- rbind(nrextras22, tempnr22[16905:length(tempnr22$dt),])
 
-t <- tempnr %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") 
+t <- tempnr22 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") 
 
 nrextras22 <- nrextras22 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr")
 
 
-Eldobind22 <- cbind(tempus, t[1:16904,]) %>% 
+Eldobind22 <- cbind(tempEl22, t[1:16904,]) %>% 
   select(-sr2, -Group.1, -solarWm2ReferenceValue, -group, -surf, -T_2.00, -WS_2.00)
 
 Eldobind22 <- plyr::rbind.fill(Eldobind22, nrextras22)
@@ -346,8 +346,8 @@ Eldobind22 <- plyr::rbind.fill(Eldobind22, nrextras22)
 nrel2023 <- nrel %>% filter(year(dt)==2023)
 usEldo <- all %>% filter(site=="Eldo", year(dt)==2023)
 
-tempus <- usEldo
-tempnr <- nrel2023[4208:length(nrel2023$dt),] #strange that this didn't change when I added an hour
+tempEl23 <- usEldo
+tempnr23 <- nrel2023[4208:length(nrel2023$dt),] #strange that this didn't change when I added an hour
 
 nrextras23 <- nrel2023[1:4207,]
 
@@ -355,20 +355,20 @@ i_offset=0
 for(i in 2:9705) { #8000 #3273
   print(i)
   i=i-i_offset
-  diff <- tempus$dt[i]-tempnr$dt[i]
-  diff_lag <- tempus$dt[i]-tempnr$dt[i+1]
-  diff_lead <- tempus$dt[i]-tempnr$dt[i-1]
+  diff <- tempEl23$dt[i]-tempnr23$dt[i]
+  diff_lag <- tempEl23$dt[i]-tempnr23$dt[i+1]
+  diff_lead <- tempEl23$dt[i]-tempnr23$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    nrextras23 <- rbind(nrextras23, tempnr[i,])
-    tempnr <- tempnr[-i,]
+    nrextras23 <- rbind(nrextras23, tempnr23[i,])
+    tempnr23 <- tempnr23[-i,]
     i_offset=i_offset+1
     print("lag")
-    nrextras23 <- rbind(nrextras23, tempnr[i,])
+    nrextras23 <- rbind(nrextras23, tempnr23[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
     #break
-    tempus <- tempus[-i,]
+    tempEl23 <- tempEl23[-i,]
     i_offset=i_offset+1
     print("lead")
   }
@@ -383,14 +383,14 @@ for(i in 2:9705) { #8000 #3273
 #I think they might be matched up to each other 3273 rows
 
 
-nrextras23 <- rbind(nrextras23, tempnr[3274:length(tempnr$dt),])
+nrextras23 <- rbind(nrextras23, tempnr23[3274:length(tempnr23$dt),])
 
-t <- tempnr %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr")
+t <- tempnr23 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr")
 
 nrextras23 <- nrextras23 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr")
 
 
-Eldobind23 <- cbind(tempus, t[1:3273,]) %>% 
+Eldobind23 <- cbind(tempEl23, t[1:3273,]) %>% 
   select(-sr2, -Group.1, -solarWm2ReferenceValue, -group, -surf, -T_2.00, -WS_2.00)
 
 Eldobind23 <- plyr::rbind.fill(Eldobind23, nrextras23)
@@ -410,10 +410,10 @@ summary(mod)
 
 #plot and mod we used
 ggplot(Eldobinds, aes(x=T_1.00_src, y=T_1.00)) + geom_point(alpha=.3) + geom_smooth(method="lm")
-mod <- lm(T_1.00~T_1.00_src, Eldobinds) #could have *year(dt) but excluding it bc doesn't make a big diff
-summary(mod)
+modTEldo <- lm(T_1.00~T_1.00_src, Eldobinds) #could have *year(dt) but excluding it bc doesn't make a big diff
+summary(modTEldo)
 
-Eldobinds <- Eldobinds  %>% mutate(T_1.00pred = T_1.00_src*mod$coefficients[2] + mod$coefficients[1],
+Eldobinds <- Eldobinds  %>% mutate(T_1.00pred = T_1.00_src*modTEldo$coefficients[2] + modTEldo$coefficients[1],
                                          T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                          T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
                                          dtuse = as.POSIXct(ifelse(is.na(T_1.00), dt_src, dt), tz="MST")) #could also create a column that's a measurement of error
@@ -441,10 +441,10 @@ ggplot(data= Eldobinds %>% filter(year(dtuse)==2023), aes(x=dtuse, color=T_1.00o
 
 #### Solar radiation ####
 ggplot(Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 MST"), aes(x=sr_src, y=sr)) + geom_point() + geom_smooth(method="lm")
-mod <- lm(sr~sr_src, Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 MST"))
-summary(mod)
+modsrEldo <- lm(sr~sr_src, Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 MST"))
+summary(modsrEldo)
 
-Eldobinds <- Eldobinds  %>% mutate(srpred = sr_src*mod$coefficients[2] + mod$coefficients[1],
+Eldobinds <- Eldobinds  %>% mutate(srpred = sr_src*modsrEldo$coefficients[2] + modsrEldo$coefficients[1],
                                    sruse = ifelse(dtuse>="2022-08-28 19:31:08 MST" | is.na(sr), srpred, sr),
                                    srori = ifelse(dtuse>="2022-08-28 19:31:08 MST" | is.na(sr), "modelled", "direct")) #could also create a column that's a measurement of error
 
@@ -518,7 +518,7 @@ Eb23$T_soilest <- soil_temperature(
 Eldobinds <- rbind(Eb22, Eb23)
 
 ### Combine and refine ####
-
+Eldobinds_old <- Eldobinds
 Eldobinds <- Eldobinds %>% select(-WS_2.00, -group, -T_2.00, -surf)
 
 #add site column before merging 
@@ -532,8 +532,8 @@ Eldobinds$site <- "Eldo"
 hydroS22 <- hydroS %>% filter(year(dt)==2022)
 usB1 <- all %>% filter(site=="B1", year(dt)==2022)
 
-tempus <- usB1
-temphydro <- hydroS22[21953:length(hydroS22$dt),]
+tempB122 <- usB1
+temphydro22 <- hydroS22[21953:length(hydroS22$dt),]
 
 hyextras22 <- hydroS22[19506:21952,]
 
@@ -541,25 +541,25 @@ i_offset=0
 for(i in 2:32048) { 
   print(i)
   i=i-i_offset
-  diff <- tempus$dt[i]-temphydro$dt[i]
-  diff_lag <- tempus$dt[i]-temphydro$dt[i+1]
-  diff_lead <- tempus$dt[i]-temphydro$dt[i-1]
+  diff <- tempB122$dt[i]-temphydro22$dt[i]
+  diff_lag <- tempB122$dt[i]-temphydro22$dt[i+1]
+  diff_lead <- tempB122$dt[i]-temphydro22$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    hyextras22 <- rbind(hyextras22, temphydro[i,])
-    temphydro <- temphydro[-i,]
+    hyextras22 <- rbind(hyextras22, temphydro22[i,])
+    temphydro22 <- temphydro22[-i,]
     i_offset=i_offset+1
     print("lag")
-    hyextras22 <- rbind(hyextras22, temphydro[i,])
+    hyextras22 <- rbind(hyextras22, temphydro22[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
     #break
-    tempus <- tempus[-i,]
+    tempB122 <- tempB122[-i,]
     i_offset=i_offset+1
     print("lead")
   }
   # print(length(templt$dt))
-  # print(length(tempus$dt))
+  # print(length(tempB122$dt))
   print("i")
   print(i)
   print("diff")
@@ -567,17 +567,17 @@ for(i in 2:32048) {
 }
 
 
-#hyextras22 <- rbind(hyextras22, temphydro[16010:length(temphydro$dt),]) #prob unnecessary
+#hyextras22 <- rbind(hyextras22, temphydro22[16010:length(temphydro22$dt),]) #prob unnecessary
 
-t <- temphydro %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
+t <- temphydro22 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 hyextras22 <- hyextras22 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 
-#issue with amount... trace bqck by looking at templt and tempus
-B1bind22 <- cbind(tempus, t[1:16010,]) 
+#issue with amount... trace bqck by looking at templt and tempB122
+B1bind22 <- cbind(tempB122, t[1:16010,]) 
 
 B1bind22 <- plyr::rbind.fill(B1bind22, hyextras22)
 
@@ -586,8 +586,8 @@ B1bind22 <- plyr::rbind.fill(B1bind22, hyextras22)
 hydroS23 <- hydroS %>% filter(year(dt)==2023)
 usB1 <- all %>% filter(site=="B1", year(dt)==2023)
 
-tempus <- usB1[20:length(usB1$dt),] #NOTE -- look out for beginnings and ends
-temphydro <- hydroS23[23386:length(hydroS23$dt),]
+tempB123 <- usB1[20:length(usB1$dt),] #NOTE -- look out for beginnings and ends
+temphydro23 <- hydroS23[23386:length(hydroS23$dt),]
 
 hyextras23 <- hydroS23[19506:23386,]
 
@@ -595,25 +595,25 @@ i_offset=0
 for(i in 2:14050) { 
   print(i)
   i=i-i_offset
-  diff <- tempus$dt[i]-temphydro$dt[i]
-  diff_lag <- tempus$dt[i]-temphydro$dt[i+1]
-  diff_lead <- tempus$dt[i]-temphydro$dt[i-1]
+  diff <- tempB123$dt[i]-temphydro23$dt[i]
+  diff_lag <- tempB123$dt[i]-temphydro23$dt[i+1]
+  diff_lead <- tempB123$dt[i]-temphydro23$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    hyextras23 <- rbind(hyextras23, temphydro[i,])
-    temphydro <- temphydro[-i,]
+    hyextras23 <- rbind(hyextras23, temphydro23[i,])
+    temphydro23 <- temphydro23[-i,]
     i_offset=i_offset+1
     print("lag")
-    hyextras23 <- rbind(hyextras23, temphydro[i,])
+    hyextras23 <- rbind(hyextras23, temphydro23[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
     #break
-    tempus <- tempus[-i,]
+    tempB123 <- tempB123[-i,]
     i_offset=i_offset+1
     print("lead")
   }
   # print(length(templt$dt))
-  # print(length(tempus$dt))
+  # print(length(tempB123$dt))
   print("i")
   print(i)
   print("diff")
@@ -621,17 +621,17 @@ for(i in 2:14050) {
 }
 
 
-#hyextras23 <- rbind(hyextras23, temphydro[16010:length(temphydro$dt),]) #prob unnecessary
+#hyextras23 <- rbind(hyextras23, temphydro23[16010:length(temphydro23$dt),]) #prob unnecessary
 
-t <- temphydro %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
+t <- temphydro23 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 hyextras23 <- hyextras23 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 
-#issue with amount... trace bqck by looking at templt and tempus
-B1bind23 <- cbind(tempus, t[1:11476,]) #check this #
+#issue with amount... trace bqck by looking at templt and tempB123
+B1bind23 <- cbind(tempB123, t[1:11476,]) #check this #
 
 B1bind23 <- plyr::rbind.fill(B1bind23, hyextras23)
 
@@ -650,10 +650,10 @@ summary(mod)
 
 #plot and mod we used
 ggplot(B1binds, aes(x=T_1.00_src, y=T_1.00)) + geom_point(alpha=.3) + geom_smooth(method="lm")
-mod <- lm(T_1.00~T_1.00_src, B1binds) #could have *year(dt) but excluding it bc doesn't make a big diff
-summary(mod)
+modTB1 <- lm(T_1.00~T_1.00_src, B1binds) #could have *year(dt) but excluding it bc doesn't make a big diff
+summary(modTB1)
 
-B1binds <- B1binds  %>% mutate(T_1.00pred = T_1.00_src*mod$coefficients[2] + mod$coefficients[1],
+B1binds <- B1binds  %>% mutate(T_1.00pred = T_1.00_src*modTB1$coefficients[2] + modTB1$coefficients[1],
                                    T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                    T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
                                    dtuse = as.POSIXct(ifelse(is.na(dt), dt_src, dt), tz="MST")) #could also create a column that's a measurement of error
@@ -681,10 +681,10 @@ ggplot(data= B1binds %>% filter(year(dtuse)==2023), aes(x=dtuse, color=T_1.00ori
 
 #### Solar radiation ####
 ggplot(B1binds %>% filter(year(dtuse)==2022), aes(x=sr_src, y=sr)) + geom_point() + geom_smooth(method="lm")
-mod <- lm(sr~sr_src, B1binds %>% filter(year(dtuse)==2022))
-summary(mod)
+modsrB1 <- lm(sr~sr_src, B1binds %>% filter(year(dtuse)==2022))
+summary(modsrB1)
 
-B1binds <- B1binds  %>% mutate(srpred = sr_src*mod$coefficients[2] + mod$coefficients[1],
+B1binds <- B1binds  %>% mutate(srpred = sr_src*modsrB1$coefficients[2] + modsrB1$coefficients[1],
                                sruse = ifelse(year(dtuse)==2023 | is.na(sr), srpred, sr),
                                srori = ifelse(year(dtuse)==2023 | is.na(sr), "modelled", "direct")) #could also create a column that's a measurement of error
 
@@ -746,7 +746,7 @@ B1binds <- rbind(Bb22, Bb23)
 
 ##a demo
 #ggplot(B1binds %>% filter(dtuse>"2023-06-18 19:31:08 MST" & dt<"2023-06-23 19:31:08 MST"), aes(x=dtuse)) + geom_line(aes(y=T_soil), color="darkgreen") + geom_line(aes(y=T_soilest), color="lightgreen") + geom_line(aes(y=T_1.00use), color="blue")
-
+B1binds_old <- B1binds
 B1binds <- B1binds %>% select(-sr2, -solarWm2ReferenceValue, -Group.1)
 
 B1binds$site <- "B1"
@@ -758,8 +758,8 @@ B1binds$site <- "B1"
 dlter22 <- dlter %>% filter(year(dt)==2022)
 usC1 <- all %>% filter(site=="C1", year(dt)==2022)
 
-tempus <- usC1
-templt <- dlter22 #[21953:length(dlter22$dt),]
+tempC122 <- usC1
+templt22 <- dlter22 #[21953:length(dlter22$dt),]
 
 ltextras22 <- dlter22[1,]
 
@@ -767,25 +767,25 @@ i_offset=0
 for(i in 2:33579) { 
   print(i)
   i=i-i_offset
-  diff <- tempus$dt[i]-templt$dt[i]
-  diff_lag <- tempus$dt[i]-templt$dt[i+1]
-  diff_lead <- tempus$dt[i]-templt$dt[i-1]
+  diff <- tempC122$dt[i]-templt22$dt[i]
+  diff_lag <- tempC122$dt[i]-templt22$dt[i+1]
+  diff_lead <- tempC122$dt[i]-templt22$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    ltextras22 <- rbind(ltextras22, templt[i,])
-    templt <- templt[-i,]
+    ltextras22 <- rbind(ltextras22, templt22[i,])
+    templt22 <- templt22[-i,]
     i_offset=i_offset+1
     print("lag")
-    ltextras22 <- rbind(ltextras22, templt[i,])
+    ltextras22 <- rbind(ltextras22, templt22[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
     #break
-    tempus <- tempus[-i,]
+    tempC122 <- tempC122[-i,]
     i_offset=i_offset+1
     print("lead")
   }
-  # print(length(templt$dt))
-  # print(length(tempus$dt))
+  # print(length(templt22$dt))
+  # print(length(tempC122$dt))
   print("i")
   print(i)
   print("diff")
@@ -793,17 +793,17 @@ for(i in 2:33579) {
 }
 
 
-#ltextras22 <- rbind(ltextras22, templt[16010:length(templt$dt),]) #prob unnecessary
+#ltextras22 <- rbind(ltextras22, templt22[16010:length(templt22$dt),]) #prob unnecessary
 
-t <- templt %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
+t <- templt22 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 ltextras22 <- ltextras22 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 
-#issue with amount... trace bqck by looking at templt and tempus
-C1bind22 <- cbind(tempus, t[1:15096,]) 
+#issue with amount... trace bqck by looking at templt22 and tempC122
+C1bind22 <- cbind(tempC122, t[1:15096,]) 
 
 C1bind22 <- plyr::rbind.fill(C1bind22, ltextras22)
 
@@ -812,34 +812,34 @@ C1bind22 <- plyr::rbind.fill(C1bind22, ltextras22)
 dlter23 <- dlter %>% filter(year(dt)==2023)
 usC1 <- all %>% filter(site=="C1", year(dt)==2023)
 
-tempus <- usC1
-templt <- dlter23[23535:35339,]
+tempC123 <- usC1
+templt23 <- dlter23[23535:35339,]
 
-ltextras23 <- dlter23[19352:23534,] #FOUND THE MISTAKE maybe templt or maybe start earlier
+ltextras23 <- dlter23[19352:23534,] #FOUND THE MISTAKE maybe templt23 or maybe start earlier
 
 i_offset=0
 for(i in 2:11806) { 
   print(i)
   i=i-i_offset
-  diff <- tempus$dt[i]-templt$dt[i]
-  diff_lag <- tempus$dt[i]-templt$dt[i+1]
-  diff_lead <- tempus$dt[i]-templt$dt[i-1]
+  diff <- tempC123$dt[i]-templt23$dt[i]
+  diff_lag <- tempC123$dt[i]-templt23$dt[i+1]
+  diff_lead <- tempC123$dt[i]-templt23$dt[i-1]
   if(abs(diff_lag)<abs(diff) & abs(diff_lag)<abs(diff_lead)) {
-    ltextras23 <- rbind(ltextras23, templt[i,])
-    templt <- templt[-i,]
+    ltextras23 <- rbind(ltextras23, templt23[i,])
+    templt23 <- templt23[-i,]
     i_offset=i_offset+1
     print("lag")
-    ltextras23 <- rbind(ltextras23, templt[i,])
+    ltextras23 <- rbind(ltextras23, templt23[i,])
   }
   if(abs(diff_lead)<abs(diff) & abs(diff_lead)<abs(diff_lag)) {
     #print("lead") # I think we never used... probably doesn't work
     #break
-    tempus <- tempus[-i,]
+    tempC123 <- tempC123[-i,]
     i_offset=i_offset+1
     print("lead")
   }
-  # print(length(templt$dt))
-  # print(length(tempus$dt))
+  # print(length(templt23$dt))
+  # print(length(tempC123$dt))
   print("i")
   print(i)
   print("diff")
@@ -847,15 +847,15 @@ for(i in 2:11806) {
 }
 
 
-#ltextras23 <- rbind(ltextras23, templt[16010:length(templt$dt),]) #prob unnecessary
+#ltextras23 <- rbind(ltextras23, templt23[16010:length(templt23$dt),]) #prob unnecessary
 
-t <- templt %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
+t <- templt23 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
 ltextras23 <- ltextras23 %>% rename(dt_src="dt", ws_src="ws", T_1.00_src="T_1.00", sr_src="sr") %>%
   select(dt_src, sr_src, ws_src, T_1.00_src)
 
-C1bind23 <- cbind(tempus[1:7443,], t)
+C1bind23 <- cbind(tempC123[1:7443,], t)
 
 C1bind23 <- plyr::rbind.fill(C1bind23, ltextras23)
 
@@ -874,11 +874,11 @@ summary(mod)
 
 #plot and mod we used -- a tiny bit different / worse... due to using "date.time_end" rather than "date.time_start" as dt_src? 
 ggplot(C1binds, aes(x=T_1.00_src, y=T_1.00)) + geom_point(alpha=.3) + geom_smooth(method="lm")
-mod <- lm(T_1.00~T_1.00_src, C1binds) #could have *year(dt) but excluding it bc doesn't make a big diff
-summary(mod)
+modTC1 <- lm(T_1.00~T_1.00_src, C1binds) #could have *year(dt) but excluding it bc doesn't make a big diff
+summary(modTC1)
 
 
-C1binds <- C1binds  %>% mutate(T_1.00pred = T_1.00_src*mod$coefficients[2] + mod$coefficients[1],
+C1binds <- C1binds  %>% mutate(T_1.00pred = T_1.00_src*modTC1$coefficients[2] + modTC1$coefficients[1],
                                T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
                                dtuse = as.POSIXct(ifelse(is.na(dt), dt_src, dt), tz="MST")) #could also create a column that's a measurement of error
@@ -905,10 +905,10 @@ ggplot(data= C1binds %>% filter(year(dtuse)==2023), aes(x=dtuse, color=T_1.00ori
 
 #### Solar radiation ####
 ggplot(C1binds %>% filter(year(dtuse)==2022), aes(x=sr_src, y=sr)) + geom_point() + geom_smooth(method="lm")
-mod <- lm(sr~sr_src, C1binds %>% filter(year(dtuse)==2022))
-summary(mod)
+modsrC1 <- lm(sr~sr_src, C1binds %>% filter(year(dtuse)==2022))
+summary(modsrC1)
 
-C1binds <- C1binds  %>% mutate(srpred = sr_src*mod$coefficients[2] + mod$coefficients[1],
+C1binds <- C1binds  %>% mutate(srpred = sr_src*modsrC1$coefficients[2] + modsrC1$coefficients[1],
                                sruse = ifelse(year(dtuse)==2023 | is.na(sr), srpred, sr),
                                srori = ifelse(year(dtuse)==2023 | is.na(sr), "modelled", "direct")) #could also create a column that's a measurement of error
 
@@ -965,6 +965,7 @@ Cb23$T_soilest <- soil_temperature(
 
 C1binds <- rbind(Cb22, Cb23)
 
+C1binds_old <- C1binds
 
 C1binds <- C1binds %>% select(-sr2, -solarWm2ReferenceValue, -Group.1)
 
@@ -993,6 +994,8 @@ A1$T_soilest <- soil_temperature(
   rho_so = 1620,
   shade = TRUE
 )
+
+A1_old <- A1
 
 A1 <- A1 %>% select(-sr2, -solarWm2ReferenceValue, -Group.1)
 

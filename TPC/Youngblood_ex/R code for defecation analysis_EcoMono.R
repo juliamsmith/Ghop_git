@@ -8,6 +8,9 @@ library(lme4)
 library(nlme)
 library(MuMIn)
 
+#set wd to source file location
+setwd("C:/Users/smith/Desktop/Ghop_git/TPC/Youngblood_ex")
+
 #read in data
 data=read.csv('datasheet for analyses of consumption and defecation_EcoMono.csv', header=T)
 
