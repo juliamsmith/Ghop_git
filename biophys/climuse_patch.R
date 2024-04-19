@@ -18,10 +18,5 @@ surf_r <- surface_roughness(u_r=c(wslow,	wsmed,	wshi), zr=c(.57, .82, 1.05))
 #set z, right now it's 5cm off the ground
 climateuse <- climateuse %>% mutate(T_lowuse=air_temp_profile(T_r=T_1.00use, u_r=.5, zr=2.5, z0=surf_r, z=.05, T_s=T_soil)) #FOR NOW putting air temp for soil temp because it's unlikely to affect it much at 1m
 
-#removing this one pesky entry... only run this once!
-climateuse <- climateuse[-1,]
-
-
-climateuse$wsuse <- .5 #wsuse is windspeed at 1m
 
 #now climateuse is free to use!

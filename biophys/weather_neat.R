@@ -176,51 +176,6 @@ nrel <- nrel_less %>% filter(dt>as.Date("5/15/2022 16:30", format="%m/%d/%Y %H:%
 ### Adjustments ####
 nrel$dt <- nrel$dt + 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
 
-# #ws profile down to 1m (note -- might like to use surf, but not cooperating)
-# nrel <- nrel %>% mutate(ws=wind_speed_profile_neutral(u_r=WS_2.00, zr=2, z0=surf_r, z=1)) 
-# 
-# #need to estimate a surface temperature
-# nr22 <- nrel %>% filter(year(dt)==2022)
-# nr22$T_soilest_src <- soil_temperature(
-#   z_r.intervals = 12,
-#   z_r=2,
-#   z=2, #what do the intervals mean?
-#   T_a=nr22$T_2.00,
-#   u=nr22$WS_2.00,
-#   Tsoil0=nr22$T_2.00[1], # have to create this as a var... or just make up a #
-#   z0=surf_r,
-#   SSA=.7, #guess
-#   TimeIn=hour(nr22$dt),
-#   S=nr22$sr,
-#   water_content = 0.2, #.2 here
-#   air_pressure=80.8,
-#   rho_so = 1620,
-#   shade = TRUE
-# )
-# 
-# nr23 <- nrel %>% filter(year(dt)==2023)
-# nr23$T_soilest_src <- soil_temperature(
-#   z_r.intervals = 12,
-#   z_r=2,
-#   z=2, #what do the intervals mean?
-#   T_a=nr23$T_2.00,
-#   u=nr23$WS_2.00,
-#   Tsoil0=nr23$T_2.00[1], # have to create this as a var... or just make up a #
-#   z0=surf_r,
-#   SSA=.7, #guess
-#   TimeIn=hour(nr23$dt),
-#   S=nr23$sr,
-#   water_content = 0.2, #.2 here
-#   air_pressure=80.8,
-#   rho_so = 1620,
-#   shade = TRUE
-# )
-# 
-# nrel <- rbind(nr22, nr23)
-# 
-# #air temp profile down to 1m (note -- might like to use surf, but not cooperating)
-# nrel <- nrel %>% mutate(T_1.00=air_temp_profile(T_r=T_2.00, u_r=WS_2.00, zr=2, z0=surf_r, z=1, T_s=T_soilest_src)) #FOR NOW putting air temp for soil temp because it's unlikely to affect it much at 1m
-
 
 ## hydroshare data for B1 (hydroS) ####
 
@@ -247,6 +202,12 @@ hydroS <- hydroS %>% mutate(dt=as.POSIXct(hydroS$TIMESTAMP, format="%m/%d/%Y %H:
                             sr=`IN SW RAD(W/m^2)-2.5M(AVG)`)
 
 hydroS <- hydroS[complete.cases(hydroS[ ,17:20]), ]
+
+#trim to relevant range for our field seasons
+hydroS <- hydroS %>% filter(dt>as.Date("5/15/2022 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("10/01/2022 12:21", format="%m/%d/%Y %H:%M") | 
+                               (dt>as.Date("5/15/2023 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("10/01/2023 12:21", format="%m/%d/%Y %H:%M")))
+
+
 ### Adjustments ####
 
 hydroS$dt <- hydroS$dt + 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
@@ -330,67 +291,6 @@ dlter$dt <- dlter$dt + 60*60 #TIMEZONE not sure why, but it seems this correctio
 #uncommenting for now... removing some patchy/unreliable entries
 dlter <- dlter %>% filter(dt<"2023-09-03 05:20:00")
 
-#ws profile down to 1.7m and 1m (zr=9m... ~30ft)
-#dlter2 <- dlter %>% filter(dt<"2023-09-03 05:20:00")
-
-# dlter <- dlter %>% mutate(ws_1.7=NA,
-#                           ws=NA)
-# 
-# dlter$ws_1.7 <- wind_speed_profile_neutral(u_r=dlter$wshigh, zr=9, z0=surf_r, z=1.7)
-# dlter$ws <- wind_speed_profile_neutral(u_r=dlter$wshigh, zr=9, z0=surf_r, z=1)
-# 
-# 
-# #air temp profile down to 1m
-# dlter <- dlter %>% mutate(T_1.00=NA)
-# 
-# #need a surface temperature
-# lt22 <- dlter %>% filter(year(dt)==2022) %>% filter(!is.na(T_1.7) & !is.na(ws_1.7) & !is.na(sr))
-# 
-# lt22$T_soilest <- soil_temperature(
-#   z_r.intervals = 12,
-#   z_r=1.7,
-#   z=2, #what do the intervals mean?
-#   T_a=lt22$T_1.7,
-#   u=lt22$ws_1.7,
-#   Tsoil0=lt22$T_1.7[1], # have to create this as a var... or just make up a #
-#   z0=surf_r,
-#   SSA=.7, #guess
-#   TimeIn=hour(lt22$dt),
-#   S=lt22$sr,
-#   water_content = 0.2, #.2 here
-#   air_pressure=71,
-#   rho_so = 1620,
-#   shade = TRUE
-# )
-# 
-# #ISSUE ABOVE! For now I am setting T_soilest to the air temperature at 1.7m
-# #lt22$T_soilest <- lt22$T_1.7
-# 
-# 
-# lt23 <- dlter %>% filter(year(dt)==2023)
-# lt23$T_soilest <- soil_temperature(
-#   z_r.intervals = 12,
-#   z_r=1.7,
-#   z=2, #what do the intervals mean?
-#   T_a=lt23$T_1.7,
-#   u=lt23$ws_1.7,
-#   Tsoil0=lt23$T_1.7[1], # have to create this as a var... or just make up a #
-#   z0=surf_r,
-#   SSA=.7, #guess
-#   TimeIn=hour(lt23$dt),
-#   S=lt23$sr,
-#   water_content = 0.2, #.2 here
-#   air_pressure=71,
-#   rho_so = 1620,
-#   shade = TRUE
-# )
-# 
-# dlter <- rbind(lt22, lt23)
-# 
-# 
-# #FOR NOW putting air temp for soil temp because it's unlikely to affect it much at 1m
-# dlter$T_1.00 <- air_temp_profile(T_r=dlter$T_1.7, u_r=dlter$ws_1.7, zr=1.7, z0=surf_r, z=1, T_s=dlter$T_soilest)
-
 
 # MERGE DATA AND MODEL ####
 
@@ -430,13 +330,13 @@ gap_inds <- which(diff(Eldobind$dt)>20)
 
 #handling the three predictable gaps (beginnings and ends of seasons)
 edgesnrel_src<- nrel_src %>% filter((dt_src>"2022-05-15 00:00:01 MST" & dt_src < Eldobind$dt[1]-5) |
-                      (dt_src>Eldobind$dt[gap_inds[1]+1]+5 & dt_src<"2022-10-01 00:00:01 MST") |
+                     # (dt_src>Eldobind$dt[gap_inds[1]]+5 & dt_src<Eldobind$dt[gap_inds[1]+1]-5) |
                       (dt_src> Eldobind$dt[length(Eldobind$dt)] +5 & dt_src<"2023-10-01 00:00:01 MST"))
 
 #handling the rest in a for loop... oops not quite how it works since I've already pared it down too much
 #make a list of conditions
 txt <- "gapsnrel_src <- nrel_src %>% filter(0==1" 
-for(i in 2:length(gap_inds)){
+for(i in 1:length(gap_inds)){
   txt <- paste0(txt," | (dt_src > Eldobind$dt[gap_inds[", i, "]]+5 & dt_src < Eldobind$dt[gap_inds[", i, "]+1]-5)")
 }
 txt <- paste0(txt, ")")
@@ -596,13 +496,13 @@ gap_inds <- which(diff(B1bind$dt)>20)
 
 #handling the three predictable gaps (beginnings and ends of seasons)
 edgeshy_src<- hy_src %>% filter((dt_src>"2022-05-15 00:00:01 MST" & dt_src < B1bind$dt[1]-5) |
-                                      (dt_src>B1bind$dt[gap_inds[2]+1]+5 & dt_src<"2022-10-01 00:00:01 MST") |
+                                      #(dt_src>B1bind$dt[gap_inds[2]]+5 & dt_src<"2023-05-15 00:00:01 MST") |
                                       (dt_src> B1bind$dt[length(B1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01 MST"))
 
 #handling the rest in a for loop
 #make a list of conditions
 txt <- "gapshy_src <- hy_src %>% filter(0==1" #putting a never met condition so that a | can come next
-for(i in c(1, 3:length(gap_inds))){
+for(i in c(1, 2:length(gap_inds))){
   txt <- paste0(txt," | (dt_src > B1bind$dt[gap_inds[", i, "]]+5 & dt_src < B1bind$dt[gap_inds[", i, "]+1]-5)")
 }
 txt <- paste0(txt, ")")
@@ -773,13 +673,13 @@ gap_inds <- which(diff(C1bind$dt)>20)
 
 #handling the three predictable gaps (beginnings and ends of seasons)
 edgeslter_src<- lter_src %>% filter((dt_src>"2022-05-15 00:00:01 MST" & dt_src < C1bind$dt[1]-5) |
-                                      (dt_src>C1bind$dt[gap_inds[1]+1]+5 & dt_src<"2022-10-01 00:00:01 MST") |
+                                     # (dt_src>C1bind$dt[gap_inds[1]]+5 & dt_src<"2022-05-15 00:00:01 MST") |
                                       (dt_src> C1bind$dt[length(C1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01 MST"))
 
 #handling the rest in a for loop
 #make a list of conditions
 txt <- "gapslter_src <- lter_src %>% filter(0==1" #this condition is never met
-for(i in 2:length(gap_inds)){
+for(i in 1:length(gap_inds)){
   txt <- paste0(txt," | (dt_src > C1bind$dt[gap_inds[", i, "]]+5 & dt_src < C1bind$dt[gap_inds[", i, "]+1]-5)")
 }
 txt <- paste0(txt, ")")
@@ -787,7 +687,7 @@ txt <- paste0(txt, ")")
 eval(parse(text=txt)) #run that string as code
 
 #add in modeled values to fill gaps in time
-C1binds <- plyr::rbind.fill(C1bind, C1extras, edgeslter_src, gapslter_src)
+C1binds <- plyr::rbind.fill(C1bind, C1extras, edgeslter_src, gapslter_src) 
 
 
 ### Adding in the predictions/gap-filling ####
@@ -837,7 +737,7 @@ summary(modsrC1)
 
 C1binds <- C1binds  %>% mutate(srpred = sr_src*modsrC1$coefficients[2] + modsrC1$coefficients[1],
                                sruse = ifelse(year(dtuse)==2023 | is.na(sr), srpred, sr),
-                               srori = ifelse(year(dtuse)==2023 | is.na(sr), "modelled", "direct")) #could also create a column that's a measurement of error
+                               srori = ifelse(year(dtuse)==2023 | is.na(sr), "modelled", "direct")) 
 
 #what we are going to use
 ggplot(data= C1binds %>% filter(year(dtuse)==2023), aes(x=dtuse, y=srpred)) + geom_line(color="blue") + theme_bw() + ggtitle("2023 C1 Solar Radiation")
@@ -890,7 +790,9 @@ Cb23$T_soilest <- soil_temperature(
   shade = TRUE
 )
 
-C1binds <- rbind(Cb22, Cb23)
+Cb23extras <- C1binds %>% filter(year(dtuse)==2023 & dtuse > "2023-09-03 05:11:00 MST")
+
+C1binds <- plyr::rbind.fill(Cb22, Cb23, Cb23extras)
 
 C1binds_old <- C1binds
 
@@ -946,9 +848,6 @@ year(climateuse$dt_noyr) <- 2024
 
 coeff=30
 ggplot(climateuse, aes(x=dt_noyr)) + 
-  #  geom_line(aes(y=Tb_pred, color="Ghop temp")) +
-  #  geom_line(aes(y=mbsoil, color="Soil model temp")) +
-  #  geom_line(aes(y=mbvegh, color="Veg model temp")) +
   geom_line(aes(y=T_1.00use, color="Air temp")) + 
   geom_line(aes(y=T_soilest, color = "Soil temp")) +
   geom_line(aes(y=wsuse, color="Wind speed")) +
@@ -963,10 +862,7 @@ ggplot(climateuse, aes(x=dt_noyr)) +
   theme(axis.title.y.right = element_text(color = "red")) +
   scale_color_manual(name='Climate vars',
                      breaks=c('Air temp', 'Soil temp', 'Wind speed', 'Solar rad'),
-                     values=c(#'Ghop temp'='green',
-                       #'Soil model temp' = 'darkseagreen',
-                       #'Veg model temp' = 'darkgreen',
-                       'Air temp' = 'blue', 
+                     values=c('Air temp' = 'blue', 
                        'Soil temp'='brown', 
                        'Wind speed'='gray', 
                        'Solar rad'='red')) +
@@ -976,4 +872,4 @@ ggplot(climateuse, aes(x=dt_noyr)) +
 # STRAY TESTS ####
 
 #ggplot(data= C1bind %>% filter(dt>"2022-07-11 00:00:01 MST" & dt<"2022-07-12 00:00:01 MST")) + geom_line(aes(x=dt, y=sr), color="red") + geom_line(aes(x=dt_src, y=sr_src))+ theme_bw() + ggtitle("2023 C1 sr")
-#solar_noon(lon=-105.55, doy=day_of_year("2022-07-11 00:00:01 MST"), offset=-6)
+#solar_noon(lon=-105.55, doy=day_of_year("2022-07-11 00:00:01 MST"), offset=-6) #kind of hard to tell
