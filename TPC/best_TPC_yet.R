@@ -380,6 +380,9 @@ d_fits <- mutate(d_fits, output_boot = map(bootstrap, function(x) x$t))
 
 ##^this is approximately what there was in the vignette and I was trying to fix
 
+
+#THE FOR LOOP IS WHERE IT BREAKS
+#d_fits becomes blank and the console doesn't work after
 d_fits$preds <- d_fits$data
 
 for(i in 1:length(d_fits$preds)){
