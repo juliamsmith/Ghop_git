@@ -11,11 +11,11 @@ library(minpack.lm)
 
 setwd("C:/Users/smith/Desktop/Ghop_git") #set wd to project directory
 
-dry <- read_csv("TPC/DigestionDryMasses_rough.csv")
+dry <- read_csv("TPC/DigestionDryMasses.csv")
 wetMB <- read_csv("TPC/MB_WetMasses_rough.csv")
 wetMS <- read_csv("TPC/MS_WetMasses_rough.csv")
-trialsMB <- read_csv("TPC/MB_AllSites_rough.csv")
-trialsMS <- read_csv("TPC/MS_AllSites_rough.csv")
+trialsMB <- read_csv("TPC/MB_AllSites.csv")
+trialsMS <- read_csv("TPC/MS_AllSites.csv")
 hoppersMB <- read_csv("TPC/MB_Individual_data_rough.csv")
 hoppersMS <- read_csv("TPC/MS_Individual_data_rough.csv")
 
@@ -45,7 +45,8 @@ mhlmass <- mhlmass %>% mutate(center_mass=ifelse(`n()`>10, med_mass,avg_mass))
 mhlmass1 <- mhlmass %>% select(-`n()`, -avg_mass, -med_mass) %>% pivot_wider(names_from=mhl_init, values_from = center_mass)
 mhlmass1 <- mhlmass1 %>% mutate(legmass=alllegs-missing1)
 mhlmass1 <- mhlmass1[-5,]
-#chose .04g as the leg mass for all MS
+#I look at the difference in masses with missing hind legs and without missing hind legs
+#chose .04g as the leg mass for all MS... it's in between that for males and females and seems fairly realistic
 hoppers <- hoppers %>% mutate(mass_adj=ifelse(mhl_init=="alllegs", 
                                               mass, 
                                               ifelse(spp=="MS", 
@@ -84,7 +85,10 @@ tpcmb <- wgnpred %>% mutate(eaten=fit-as.numeric(`wg_drymass (mg)`), eaten_l=lwr
 #merge with the trials (now we have temperatures)
 mrg <- merge(trials_more, tpcmb, by.x=c("wg", "spp"), by.y=c("wg_ID", "spp"))
 
-mrg <- mrg %>% mutate(site=factor(mrg$site, levels=c("Eldo", "A1", "B1", "C1")),fecesdry=as.numeric(mrg$`feces_drymass (mg)`), discolored=replace_na(`discolored (Y/N)`, "N"), temp=as.numeric(temp))
+mrg <- mrg %>% mutate(site=factor(mrg$site, levels=c("Eldo", "A1", "B1", "C1")),fecesdry=ifelse(is.na(as.numeric(`feces_drymass (mg)`)), 0, as.numeric(`feces_drymass (mg)`)), discolored=replace_na(`discolored (Y/N)`, "N"), temp=as.numeric(temp))
+
+#more examination of mrg
+ggplot(mrg, aes(x=temp, y=fecesdry, color=interaction(is.na(notes.x), is_valid), shape=sex)) + geom_point() + facet_grid(spp~site)
 
 mrg_refinedforwg <- mrg %>% filter(discolored=="N" & (is.na(`wg_mold (Y/N/1-4)`) | `wg_mold (Y/N/1-4)`=="N") & is.na(is_valid))
 
@@ -94,6 +98,20 @@ d_fe_og <- mrg_refinedforfeces %>% rename(rate=fecesdry)
 d_fe_og$rate[is.na(d_fe_og$rate)]=0
 
 d_wg_og <- mrg_refinedforwg %>% rename(rate=eaten) %>% filter(!is.na(temp) & !is.na(rate))
+
+#creating a new variable -- batch reflects combination of date and temperature
+d_fe_og <- d_fe_og %>% mutate(batch = paste(start_date, temp, sep="_"))
+
+d_fe_og$start_datetime <- as.POSIXct(d_fe_og$start_datetime, format="%m/%d/%Y %H:%M")
+d_fe_og$end_datetime <- as.POSIXct(d_fe_og$end_datetime, format="%m/%d/%Y %H:%M")
+
+d_fe_og <- d_fe_og %>% mutate(fec = ifelse(is.na(as.numeric(`feces_drymass (mg)`)), 0, as.numeric(`feces_drymass (mg)`)), 
+                              eat_time = end_datetime-start_datetime,
+                              fec_adj = fec/mass_adj,
+                              fec_double_adj=fec_adj/as.numeric(eat_time))
+#then let's t test to see if males and females differ once mass-corrected
+d_fe_og_F <- d_fe_og %>% filter(sex=="F")
+d_fe_og_M <- d_fe_og %>% filter(sex=="M")
 
 
 #some viz
@@ -107,10 +125,7 @@ ggplot(d_fe_og %>% filter(spp=="MS"), aes(x=mass_adj, y=as.numeric(`feces_drymas
 ggplot(d_fe_og %>% filter(spp=="MS"), aes(x=mass_adj, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=sex)) + geom_point() + facet_grid(site~temp)
 
 
-d_fe_og <- d_fe_og %>% mutate(fec = ifelse(is.na(as.numeric(`feces_drymass (mg)`)), 0, as.numeric(`feces_drymass (mg)`)), fec_adj = fec/mass_adj)
-#then let's t test to see if males and females differ once mass-corrected
-d_fe_og_F <- d_fe_og %>% filter(sex=="F")
-d_fe_og_M <- d_fe_og %>% filter(sex=="M")
+
 
 spps <- c("MB", "MS")
 sites <- c("Eldo", "A1", "B1", "C1")
@@ -135,16 +150,368 @@ for(sppi in spps){
 }
 
 df <- data.frame(spp=sppsvec, site=sitesvec, temp=tempsvec, tsex=tsexvec)
+#mostly not... may be able to ignore sex depending on how we adjust for multiple comparisons
 
 
 ggplot(d_fe_og %>% filter(spp=="MB", site=="A1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 ggplot(d_fe_og %>% filter(spp=="MB", site=="B1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 ggplot(d_fe_og %>% filter(spp=="MB", site=="C1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 
+ggplot(d_fe_og %>% filter(spp=="MS", site=="Eldo"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 ggplot(d_fe_og %>% filter(spp=="MS", site=="A1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 ggplot(d_fe_og %>% filter(spp=="MS", site=="B1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
-ggplot(d_fe_og %>% filter(spp=="MS", site=="C1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 
+
+#sanity check on batches... I think the batches don't look too distinct from one another (overall since site shouldn't matter) 
+ggplot(d_fe_og %>% filter(spp=="MB"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=batch, shape=sex)) + geom_jitter(width=1, height=0) #+ facet_wrap(~site) 
+
+ggplot(d_fe_og %>% filter(spp=="MS"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=batch, shape=sex)) + geom_jitter(width=1, height=0) #+ facet_wrap(~site) 
+
+
+#and now just doing a regular viz like before
+
+ggplot(d_fe_og, aes(x=temp, y=fec, color=sex)) + geom_point() + geom_smooth() + facet_grid(spp~site)
+
+ggplot(d_fe_og, aes(x=temp, y=fec_double_adj, color=sex)) + geom_point() + geom_smooth() + facet_grid(spp~site)
+
+ggplot(d_fe_og %>% filter(site=="A1", spp=="MS", temp==43), aes(x=full_ID, y=fec_double_adj, shape=sex, color=start_date)) + geom_point()
+
+ggplot(d_fe_og %>% filter(spp=="MS", temp==43), aes(x=full_ID, y=fec_double_adj, shape=sex, color=start_date)) + geom_point() #+ facet_wrap(~site)
+
+
+#d_fe_og %>% filter(spp=="MS") %>% group_by()
+
+
+#data quality notes to self 
+#- duplicates 415x, 568x, 574x, 591x, 610x, 626x, 639x, 659x, 694x, 711x
+#- look into time ranges and trials
+#-2 20sx, missing 36x, 42x, 68x, 69 (missing everywhere?), 70x, 87 (missing everywhere?), 152x, 197x, 215x, 216x, 227x, 270-280 (ex. 277)x, 284-300 is intentional I think -- gap 269-300 should be intentional
+#311x, 319x, 325x, 342x, 381-383 (381 -- 30 8/25; 382 instead of 282?, 283?), 399 (real gap), 400x, 409x, 410 (real gap), 452x, something weird happening with 473(couldn't find issue)
+# 582 (real gap)... 482... just missing, 507 (real gap), 517x, 565 (real gap, 43 8/28),642 (real gap, 23 8/30),644 (nowhere), 655 (real gap 43 8/30),678 (real gap 43 8/30)
+
+#20/2: MB_C1_M_05 (0.251g hopper, 40C) and MB_A1_M_11 (0.3417, 37C) both seem like 20, MB_B1_F_04 (is 2)
+
+
+#### let's do some analyses: lme
+
+
+#library(nlme)
+library(lme4)
+library(kableExtra)
+library(lmerTest)
+library(AICcmodavg)
+
+#temperature and species are significant
+d_fe_og$start_date <- as.factor(d_fe_og$start_date) #made start date a factor
+#should temp be a factor or not?
+# feedmod <- lmer(fec_adj ~ as.factor(temp) + as.factor(temp)*as.factor(site) + as.factor(temp)*as.factor(sex) + as.factor(temp)*as.factor(spp) + 
+#                   (1|full_ID) + 
+#                   (1|start_date/batch) #this one leads to singularity issues.. not sure if that's okay
+#                 ,  #gotta work on this... maybe nesting in start_date is wrong?
+#                 na.action = 'na.omit', #uncommented
+#                 #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+#                 data = d_fe_og) 
+# 
+# 
+# feedanova <- Anova(feedmod, type=3)
+
+
+
+feedmodMB1 <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2  + #currently not giving me the layers I wanted with temp as well
+                  (1|full_ID),  
+                na.action = 'na.omit', #uncommented
+                REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                data = d_fe_og %>% filter(spp=="MB")) 
+
+feedanovaMB1 <- Anova(feedmodMB1, type=3)
+
+
+feedmodMB2 <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MB")) 
+
+feedanovaMB2 <- Anova(feedmodMB2, type=3)
+
+feedmodMB3 <- lmer(fec_double_adj ~ (poly(temp, 2)+as.ordered(as.factor(site))+as.factor(sex))^2  + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MB")) 
+
+feedanovaMB3 <- Anova(feedmodMB3, type=3)
+
+
+feedmodMB4 <- lmer(fec_double_adj ~ (poly(temp, 2)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MB")) 
+
+feedanovaMB4 <- Anova(feedmodMB4, type=3)
+
+feedmodMB5 <- lmer(fec_double_adj ~ poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex)  + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MB")) 
+
+feedanovaMB5 <- Anova(feedmodMB5, type=3)
+
+aictab(list(feedmodMB1, feedmodMB2, feedmodMB3, feedmodMB4, feedmodMB5), modnames = c("feedmodMB1", "feedmodMB2", "feedmodMB3", "feedmodMB4", "feedmodMB5"))
+
+#1 or 2 -- not 3 or 4 (i.e. poly(temp 2)) (or 5)
+
+
+feedmodMS1 <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2  + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MS")) 
+
+feedanovaMS1 <- Anova(feedmodMS1, type=3)
+
+
+feedmodMS2 <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MS")) 
+
+feedanovaMS2 <- Anova(feedmodMS2, type=3)
+
+feedmodMS3 <- lmer(fec_double_adj ~ (poly(temp, 2)+as.ordered(as.factor(site))+as.factor(sex))^2  + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MS")) 
+
+feedanovaMS3 <- Anova(feedmodMS3, type=3)
+
+
+feedmodMS4 <- lmer(fec_double_adj ~ (poly(temp, 2)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MS")) 
+
+feedanovaMS4 <- Anova(feedmodMS4, type=3)
+
+feedmodMS5 <- lmer(fec_double_adj ~ poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex)  + #currently not giving me the layers I wanted with temp as well
+                     (1|full_ID),  
+                   na.action = 'na.omit', #uncommented
+                   REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                   data = d_fe_og %>% filter(spp=="MS")) 
+
+feedanovaMS5 <- Anova(feedmodMS5, type=3)
+
+aictab(list(feedmodMS1, feedmodMS2, feedmodMS3, feedmodMS4, feedmodMS5), modnames = c("feedmodMS1", "feedmodMS2", "feedmodMS3", "feedmodMS4", "feedmodMS5"))
+
+
+#going with 2 here
+feedmodMS <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + #currently not giving me the layers I wanted with temp as well
+                    (1|full_ID),  
+                  na.action = 'na.omit', #uncommented
+                  #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                  data = d_fe_og %>% filter(spp=="MS")) 
+
+
+feedanovaMS <- Anova(feedmodMS, type=3)
+
+
+feedmodMB <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + 
+                    (1|full_ID),  
+                  na.action = 'na.omit', #uncommented
+                  #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
+                  data = d_fe_og %>% filter(spp=="MB")) 
+
+
+feedanovaMB <- Anova(feedmodMB, type=3)
+
+
+library(ggeffects)
+
+dat <- ggpredict(feedmodMB)
+pM <- plot(dat)#, facet = TRUE)
+pM
+
+library(sjPlot)
+plot_model(feedmodMB)
+
+
+
+
+MBd <- d_fe_og %>% filter(spp=="MB")
+
+
+MBd <- MBd %>% mutate(pred=predict(feedmodMB, interval="prediction"))
+
+ggplot(MBd) + geom_point(aes(x=temp, y=pred), color="red", alpha=.2) + geom_point(aes(x=temp, y=fec_double_adj), alpha=.2) + facet_grid(site~sex)
+
+ggplot(MBd) + geom_point(aes(x=fec_double_adj, y=pred)) 
+
+dat <- ggpredict(feedmodMS)
+pM <- plot(dat)#, facet = TRUE)
+pM
+
+plot_model(feedmodMS)
+
+MSd <- d_fe_og %>% filter(spp=="MS")
+
+
+MSd <- MSd %>% mutate(pred=predict(feedmodMS))
+
+ggplot(MSd) + geom_point(aes(x=temp, y=pred), color="red", alpha=.2) + geom_point(aes(x=temp, y=fec_double_adj), alpha=.2) + facet_grid(site~sex)
+
+
+
+#also want to generate estimated coefficients in a nice table
+sMB <- summary(feedmodMB)
+sMB <- data.frame(sMB[["coefficients"]])
+
+
+sMB$Significance <- "   "
+sMB$Significance[sMB$`Pr...t..`<.05] <- "*  "
+sMB$Significance[sMB$`Pr...t..`<.01] <- "** "
+sMB$Significance[sMB$`Pr...t..`<.001] <- "***"
+sMB$`Pr...t..` <- format(sMB$`Pr...t..`, scientific=TRUE, digits=3)
+sMB$`Pr...t..` <- as.character(sMB$`Pr...t..`)
+sMB <- sMB %>% unite(p, c(`Pr...t..`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(sMB, digits=3, col.names=c("Coefficient", "Std. Error", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("hoppingcoeff.png")
+
+
+
+feedanovaMB$Significance <- "   "
+feedanovaMB$Significance[feedanovaMB$`Pr(>Chisq)`<.05] <- "*  "
+feedanovaMB$Significance[feedanovaMB$`Pr(>Chisq)`<.01] <- "** "
+feedanovaMB$Significance[feedanovaMB$`Pr(>Chisq)`<.001] <- "***"
+feedanovaMB$`Pr(>Chisq)` <- format(feedanovaMB$`Pr(>Chisq)`, scientific=TRUE, digits=3)
+feedanovaMB$`Pr(>Chisq)` <- as.character(feedanovaMB$`Pr(>Chisq)`)
+feedanovaMB <- feedanovaMB %>% unite(p, c(`Pr(>Chisq)`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(feedanovaMB, digits=3, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("feedanovaMB.png")
+
+
+
+
+
+sMS <- summary(feedmodMS)
+sMS <- data.frame(sMS[["coefficients"]])
+
+
+sMS$Significance <- "   "
+sMS$Significance[sMS$`Pr...t..`<.05] <- "*  "
+sMS$Significance[sMS$`Pr...t..`<.01] <- "** "
+sMS$Significance[sMS$`Pr...t..`<.001] <- "***"
+sMS$`Pr...t..` <- format(sMS$`Pr...t..`, scientific=TRUE, digits=3)
+sMS$`Pr...t..` <- as.character(sMS$`Pr...t..`)
+sMS <- sMS %>% unite(p, c(`Pr...t..`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(sMS, digits=3, col.names=c("Coefficient", "Std. Error", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("hoppingcoeff.png")
+
+
+feedanovaMS$Significance <- "   "
+feedanovaMS$Significance[feedanovaMS$`Pr(>Chisq)`<.05] <- "*  "
+feedanovaMS$Significance[feedanovaMS$`Pr(>Chisq)`<.01] <- "** "
+feedanovaMS$Significance[feedanovaMS$`Pr(>Chisq)`<.001] <- "***"
+feedanovaMS$`Pr(>Chisq)` <- format(feedanovaMS$`Pr(>Chisq)`, scientific=TRUE, digits=3)
+feedanovaMS$`Pr(>Chisq)` <- as.character(feedanovaMS$`Pr(>Chisq)`)
+feedanovaMS <- feedanovaMS %>% unite(p, c(`Pr(>Chisq)`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(feedanovaMS, digits=3, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("feedanovaMS.png")
+
+perfanova <- cbind(feedanovaMB, feedanovaMS)
+
+options(knitr.kable.NA = '')
+kable(perfanova, digits=1, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p","<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() %>% add_header_above(c(" " = 1, "MB" = 3, "MS" = 3)) #%>% save_kable("Tables/Tab4_perfanova.png")
+
+
+
+perfs <- cbind(sMB, sMS)
+
+options(knitr.kable.NA = '')
+kable(perfs, digits=1, col.names=c("Coeff", "SE", "df", "t", "p", "Coeff", "SE", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() %>% add_header_above(c(" " = 1, "MB" = 5, "MS" = 5)) #%>% save_kable("Tables/Tab4_perfanova.png")
+
+
+
+#note on rescaling and interactions: https://stackoverflow.com/questions/76308262/why-do-my-p-values-change-after-rescaling-variables-mixed-models
+
+#note on temperature
+# x = rnorm(1000)
+# raw.poly = poly(x,6,raw=T)
+# orthogonal.poly = poly(x,6)
+# cor(raw.poly)
+# cor(orthogonal.poly)
+
+
+# #fullmodel of hopping... which include a polynomial to allow testtemp to go d
+# hopmod <- lmer(value ~ poly(TestTemp, 2, raw = TRUE) * Sex * Site * Temperature * Photoperiod + 
+#                  #(1|variable/ID/Female2), #original
+#                  #(1|Female2/ID/variable), #this gave a singularity issue 
+#                  (1|Female2/ID), #+ (1|variable), #so this did work -- might wanna double check it!
+#                REML = FALSE, #
+#                na.action = 'na.omit', data = Hop_Long)
+
+
+
+# feedmod <- lmer(fec_adj ~ temp * factor(site) * factor(sex) + 
+#                  (1|full_ID), 
+#                na.action = 'na.omit', #uncommented
+#                #REML = FALSE,
+#                data = d_fe_og %>% filter(spp=="MB")) 
+# 
+# feedanova <- Anova(feedmod, type=3)
+# 
+# 
+# 
+# 
+# 
+# feedmod <- lmer(fec_adj ~ temp + site + sex + 
+#                   (1|full_ID), 
+#                 na.action = 'na.omit', #uncommented
+#                 #REML = FALSE,
+#                 data = d_fe_og %>% filter(spp=="MS")) 
+# 
+# feedanova <- Anova(feedmod, type=3)
+# 
+# feedmod <- lmer(fec_adj ~ as.factor(temp) * as.factor(site, ordered=TRUE) * as.factor(sex) + 
+#                   (1|full_ID), 
+#                 na.action = 'na.omit', #uncommented
+#                 #REML = FALSE,
+#                 data = d_fe_og %>% filter(spp=="MB")) 
+# 
+# feedanova1 <- Anova(feedmod, type=3)
+# 
+# 
+# 
+# feedmod1 <- lmer(fec_adj ~ temp * site * sex + 
+#                   (1|full_ID), 
+#                 na.action = 'na.omit', #uncommented
+#                 #REML = FALSE,
+#                 data = d_fe_og %>% filter(spp=="MB")) 
+# 
+# feedanova1 <- Anova(feedmod1, type=3)
+
+#if we do it with spp, then only temp*spp comes out
+
+#code for making table
+
+# rownames(feedanova) <- c()
+# feedanova$Significance <- "   "
+# feedanova$Significance[feedanova$`Pr(>Chisq)`<.05] <- "*  "
+# feedanova$Significance[feedanova$`Pr(>Chisq)`<.01] <- "** "
+# feedanova$Significance[feedanova$`Pr(>Chisq)`<.001] <- "***"
+# feedanova$`Pr(>Chisq)` <- format(feedanova$`Pr(>Chisq)`, scientific=TRUE, digits=3)
+# feedanova$`Pr(>Chisq)` <- as.character(feedanova$`Pr(>Chisq)`)
+# feedanova <- feedanova %>% unite(p, c(`Pr(>Chisq)`, Significance), sep="")
+
+
+# perfanova <- cbind(hopanova, feedanova)
+#
+# options(knitr.kable.NA = '')
+# kable(perfanova, digits=1, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p","<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() %>% add_header_above(c(" " = 1, "Hopping distance" = 3, "Leaf area consumed" = 3)) #%>% save_kable("Tables/Tab4_perfanova.png")
 
 
 ##make a progress bar
@@ -162,15 +529,15 @@ nls_multstart_progress <- function(formula, data = parent.frame(), iter, start_l
                 control = control, modelweights = modelweights, ...)
 }
 
-#WORKING WITH FECES SCALED BY HOPPER WEIGHT
+#WORKING WITH FECES SCALED BY HOPPER WEIGHT AND TIME
 
 ##need to drop a bunch of columns (I think this may be necessary for nesting)
-d_fe_sc <- d_fe_og %>% mutate(rate=fec_adj) %>% select(spp, site, temp, rate)
+d_fe_sc <- d_fe_og %>% mutate(rate=fec_double_adj) %>% select(spp, site, sex, temp, rate)
 
 
 # start progress bar and estimate time it will take
 number_of_models <- 4
-number_of_curves <- nrow(unique(d_fe_sc %>%select(spp, site)))
+number_of_curves <- nrow(unique(d_fe_sc %>%select(spp, site, sex)))
 
 # setup progress bar
 pb <- progress::progress_bar$new(total = number_of_curves*number_of_models,
@@ -240,7 +607,7 @@ d_preds_fe_sc <- mutate(d_fits_fe_sc, new_data = map(data, ~tibble(temp = seq(mi
   # this uses both fit and new_data list columns
   mutate(preds = map2(fit, new_data, ~augment(.x, newdata = .y))) %>%
   # select only the columns we want to keep
-  select(spp, site, model_name, preds) %>%
+  select(spp, site, sex, model_name, preds) %>%
   # unlist the preds list column
   unnest(preds)
 
@@ -250,22 +617,33 @@ glimpse(d_preds_fe_sc)
 
 
 # plot
-ggplot(d_preds_fe_sc) +
+ggplot(d_preds_fe_sc %>% filter(spp=="MB")) +
   geom_line(aes(temp, .fitted, col = model_name)) +
-  geom_jitter(aes(temp, rate), d_fe_sc, alpha=.25, width=.5, height=0) +
-  facet_grid(site~spp) +
+  geom_jitter(aes(temp, rate), d_fe_sc %>% filter(spp=="MB"), alpha=.25, width=.5, height=0) +
+  facet_grid(site~sex) +
   theme_bw() +
   #theme(legend.position = 'none') +
   scale_color_brewer(type = 'qual', palette = 2) +
   labs(x = 'Temperature (ºC)',
-       y = 'Dry feces mass (mg) / hopper mass (g)',
+       y = 'Dry feces mass (mg) / hopper mass (g) / hr',
+       title = 'Feces fitted scaled TPCs')
+
+ggplot(d_preds_fe_sc %>% filter(spp=="MS")) +
+  geom_line(aes(temp, .fitted, col = model_name)) +
+  geom_jitter(aes(temp, rate), d_fe_sc %>% filter(spp=="MS"), alpha=.25, width=.5, height=0) +
+  facet_grid(site~sex) +
+  theme_bw() +
+  #theme(legend.position = 'none') +
+  scale_color_brewer(type = 'qual', palette = 2) +
+  labs(x = 'Temperature (ºC)',
+       y = 'Dry feces mass (mg) / hopper mass (g) / hr',
        title = 'Feces fitted scaled TPCs')
 
 
 # stack models and calculate extra params
 d_fe_sc_params <- pivot_longer(d_fits_fe_sc, names_to = 'model_name', values_to = 'fit', c(gaussian,beta,weibull, rezende)) %>%
   mutate(params = map(fit, calc_params)) %>%
-  select(spp, site, model_name, params) %>%
+  select(spp, site, sex, model_name, params) %>%
   unnest(params)
 
 # stack models and calculate extra params
@@ -275,7 +653,7 @@ d_stack_fe_sc <- pivot_longer(d_fits_fe_sc, names_to = 'model_name', values_to =
 # get parameters using tidy
 d_fe_sc_params <- d_stack_fe_sc %>%
   mutate(params = map(fit, calc_params)) %>%
-  select(spp, site, model_name, params) %>%
+  select(spp, site, sex, model_name, params) %>%
   unnest(params)
 
 d_ic_fe_sc <- d_stack_fe_sc %>%
@@ -283,11 +661,11 @@ d_ic_fe_sc <- d_stack_fe_sc %>%
          AICc =  map_dbl(fit, MuMIn::AICc)) %>%
   select(-fit) %>%
   unnest(info) %>%
-  select(spp, site, model_name, sigma, AIC, AICc, BIC, df.residual)
+  select(spp, site, sex, model_name, sigma, AIC, AICc, BIC, df.residual)
 
-d_ic_fe_sc <- d_ic_fe_sc %>% group_by(spp,site) %>% mutate(., weight = MuMIn::Weights(AICc))
+d_ic_fe_sc <- d_ic_fe_sc %>% group_by(spp,site, sex) %>% mutate(., weight = MuMIn::Weights(AICc))
 
-best_models <- d_ic_fe_sc %>% group_by(spp,site) %>% summarize(best_mod=model_name[AICc == min(AICc)])
+best_models <- d_ic_fe_sc %>% group_by(spp,site, sex) %>% summarize(best_mod=model_name[AICc == min(AICc)])
 
 
 
@@ -339,12 +717,24 @@ d_fits <- d_fits %>% mutate(preds = map2(output_boot, data, function(x, y){
 
 
 # select, unnest and calculate 95% CIs of predictions
-boot_conf_preds <- select(d_fits, spp,site,sex, preds) %>%
+boot_conf_preds <- select(d_fits, spp,site, sex, preds) %>%
   unnest(preds) %>%
   group_by(spp,site,sex, temp) %>%
   summarise(conf_lower = quantile(pred, 0.025),
             conf_upper = quantile(pred, 0.975),
             .groups = 'drop')
+
+# ggplot() +
+#   geom_line(aes(temp, .fitted), d_preds_fe_sc %>% filter(model_name=="rezende"), col = 'blue') +
+#   geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds, fill = 'blue', alpha = 0.3) +
+#   geom_jitter(aes(temp, rate), d_fe_sc, alpha=.25, width=.5, height=0) +
+#   theme_bw(base_size = 12) +
+#   labs(x = 'Temperature (ºC)',
+#        y = 'Rate') +
+#   facet_grid(site~sex) +
+#   labs(x = 'Temperature (ºC)',
+#        y = 'Dry feces mass (mg) / hopper mass (g)',
+#        title = 'Feces fitted scaled rezende TPCs')
 
 ggplot() +
   geom_line(aes(temp, .fitted), d_preds_fe_sc %>% filter(spp=="MB" & model_name=="rezende"), col = 'blue') +
@@ -355,7 +745,7 @@ ggplot() +
        y = 'Rate') +
   facet_grid(site~sex) +
   labs(x = 'Temperature (ºC)',
-       y = 'Dry feces mass (mg) / (hopper mass (g))^.9',
+       y = 'Dry feces mass (mg) / hopper mass (g) / hr',
        title = 'MB feces fitted scaled rezende TPCs')
 
 ggplot() +
@@ -367,7 +757,7 @@ ggplot() +
        y = 'Rate') +
   facet_grid(site~sex) +
   labs(x = 'Temperature (ºC)',
-       y = 'Dry feces mass (mg) / (hopper mass (g))^.9',
+       y = 'Dry feces mass (mg) / hopper mass (g) / hr',
        title = 'MS feces fitted scaled rezende TPCs')
 
 #getting parameter bounds
@@ -377,7 +767,7 @@ ggplot() +
 #here's where it goes wrong
 d_fits3 <- d_fits %>% mutate(params = map(nls_fit, broom::tidy), #3,6? doesn't work [c(1:3, 6:12),]... [c(1:2, 4:12),]
                              cis = map(bootstrap, function(x){
-                               tempo <- confint(x, method = 'bca') %>%
+                               tempo <- confint(x, method = 'perc') %>% #using perc instead... bca doesn't work
                                  as.data.frame() %>%
                                  rename(conf_lower = 1, conf_upper = 2) %>%
                                  rownames_to_column(., var = 'term')
@@ -385,7 +775,16 @@ d_fits3 <- d_fits %>% mutate(params = map(nls_fit, broom::tidy), #3,6? doesn't w
                              }))
 
 
-# join parameter and confidence intervals in the same dataset
+# # join parameter and confidence intervals in the same dataset
+# left_join(select(d_fits3, spp, site, params) %>% unnest(params),
+#           select(d_fits3, spp, site, cis) %>% unnest(cis)) %>%
+#   ggplot(., aes(interaction(spp,site), estimate, color=site, shape=spp)) +
+#   geom_point(size = 4) +
+#   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+#   theme_bw() +
+#   facet_grid(~term, scales = 'free')
+
+
 #MB plot
 dfits1MB <- d_fits3 %>% filter(spp=="MB")
 left_join(select(dfits1MB, sex, site, params) %>% unnest(params),
@@ -418,7 +817,7 @@ for(i in 1:nrow(d_fits)){
                     start = d_fits$coefs[[i]],
                     lower = get_lower_lims(temp_data$temp, temp_data$rate, model_name = 'rezende_2019'),
                     upper = get_upper_lims(temp_data$temp, temp_data$rate, model_name = 'rezende_2019'))
-  boot <- Boot(temp_fit, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(temp_fit)), R = 20, method = 'case') %>%
+  boot <- Boot(temp_fit, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(temp_fit)), R = 50, method = 'case') %>%
     confint(., method = 'bca') %>%
     as.data.frame() %>%
     rename(conf_lower = 1, conf_upper = 2) %>%
@@ -431,86 +830,99 @@ for(i in 1:nrow(d_fits)){
 # calculate extra params for each model and put in long format to begin with
 d_fits <- mutate(d_fits, extra_params = map(nls_fit, function(x){calc_params(x) %>% pivot_longer(everything(), names_to =  'param', values_to = 'estimate')}))
 
+
+# left_join(select(d_fits, site, extra_params) %>% unnest(extra_params),
+#           select(d_fits, site, ci_extra_params) %>% unnest(ci_extra_params)) %>%
+#   ggplot(., aes(interaction(spp,site), estimate, color=site, shape=spp)) +
+#   geom_point(size = 4) +
+#   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+#   theme_bw() +
+#   #  labs(y = 'estimate', x = "curve id") +
+#   facet_wrap(~param, scales = 'free') +
+#   labs(title = 'Calculation of confidence intervals for extra parameters')
+
 #MB plot
 d_fitsMB <- d_fits %>% filter(spp=="MB")
 
-left_join(select(d_fitsMB, sex, site, extra_params) %>% unnest(extra_params),
-          select(d_fitsMB, sex, site, ci_extra_params) %>% unnest(ci_extra_params)) %>%
-  ggplot(., aes(interaction(sex,site), estimate, color=site, shape=sex)) +
+left_join(select(d_fitsMB, site, sex, extra_params) %>% unnest(extra_params),
+          select(d_fitsMB, site, sex, ci_extra_params) %>% unnest(ci_extra_params)) %>%
+  ggplot(., aes(interaction(sex, site), estimate, color=site, shape=sex)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   #  labs(y = 'estimate', x = "curve id") +
   facet_wrap(~param, scales = 'free') +
-  labs(title = 'Calculation of confidence intervals for extra parameters')
+  labs(title = 'MB feces -- calculation of confidence intervals for extra parameters')
 
 
 #MS plot
 d_fitsMS <- d_fits %>% filter(spp=="MS")
 
-left_join(select(d_fitsMS, sex, site, extra_params) %>% unnest(extra_params),
-          select(d_fitsMS, sex, site, ci_extra_params) %>% unnest(ci_extra_params)) %>%
-  ggplot(., aes(interaction(sex,site), estimate, color=site, shape=sex)) +
+left_join(select(d_fitsMS, site, sex, extra_params) %>% unnest(extra_params),
+          select(d_fitsMS, site, sex, ci_extra_params) %>% unnest(ci_extra_params)) %>%
+  ggplot(., aes(interaction(sex, site), estimate, color=site, shape=sex)) +
   geom_point(size = 4) +
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   #  labs(y = 'estimate', x = "curve id") +
   facet_wrap(~param, scales = 'free') +
-  labs(title = 'Calculation of confidence intervals for extra parameters')
+  labs(title = 'MS feces -- calculation of confidence intervals for extra parameters')
 
 
-# let's look at the many sets of params we got from the bootstrap and do anova/linreg -- MB
-full_df <- data.frame(q10=1, a=2, b=3, c=4,spp="mm", site="d2", sex='n')
-for(i in 1:nrow(d_fitsMB)){ 
-  spp <- d_fitsMB$spp[i] 
-  site <- d_fitsMB$site[i]
-  sex <- d_fitsMB$sex[i]
-  tack_on <- as.data.frame(d_fitsMB[[8]][[i]][["t"]])
-  tack_on$spp <- spp
-  tack_on$site <- site
-  tack_on$sex <- sex
-  full_df <-rbind(full_df, tack_on)
-}
+#n for params is artificially large
 
-bs_params_MB <- full_df[-1,]
-
-ggplot(bs_params_MB, aes(x=q10, color=sex)) + geom_density() + facet_wrap(~site)
-
-ggplot(bs_params_MB, aes(x=a, color=sex)) + geom_density() + facet_wrap(~site)
-
-ggplot(bs_params_MB, aes(x=b, color=sex)) + geom_density() + facet_wrap(~site)
-
-ggplot(bs_params_MB, aes(x=c, color=sex)) + geom_density() + facet_wrap(~site)
-
-mod <- lm(q10~sex*site, bs_params_MB)
-summary(mod)
-
-
-# let's look at the many sets of params we got from the bootstrap and do anova/linreg -- MS
-full_df <- data.frame(q10=1, a=2, b=3, c=4,spp="mm", site="d2", sex='n')
-for(i in 1:nrow(d_fitsMS)){ 
-  spp <- d_fitsMS$spp[i] 
-  site <- d_fitsMS$site[i]
-  sex <- d_fitsMS$sex[i]
-  tack_on <- as.data.frame(d_fitsMS[[8]][[i]][["t"]])
-  tack_on$spp <- spp
-  tack_on$site <- site
-  tack_on$sex <- sex
-  full_df <-rbind(full_df, tack_on)
-}
-
-bs_params_MS <- full_df[-1,]
-
-ggplot(bs_params_MS, aes(x=q10, color=sex)) + geom_density() + facet_wrap(~site)
-
-ggplot(bs_params_MS, aes(x=a, color=sex)) + geom_density() + facet_wrap(~site)
-
-ggplot(bs_params_MS, aes(x=b, color=sex)) + geom_density() + facet_wrap(~site)
-
-ggplot(bs_params_MS, aes(x=c, color=sex)) + geom_density() + facet_wrap(~site)
-
-mod <- lm(q10~sex*site, bs_params_MS)
-summary(mod)
+# # let's look at the many sets of params we got from the bootstrap and do anova/linreg -- MB
+# full_df <- data.frame(q10=1, a=2, b=3, c=4,spp="mm", site="d2", sex='n')
+# for(i in 1:nrow(d_fitsMB)){ 
+#   spp <- d_fitsMB$spp[i] 
+#   site <- d_fitsMB$site[i]
+#   sex <- d_fitsMB$sex[i]
+#   tack_on <- as.data.frame(d_fitsMB[[8]][[i]][["t"]])
+#   tack_on$spp <- spp
+#   tack_on$site <- site
+#   tack_on$sex <- sex
+#   full_df <-rbind(full_df, tack_on)
+# }
+# 
+# bs_params_MB <- full_df[-1,]
+# 
+# ggplot(bs_params_MB, aes(x=q10, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# ggplot(bs_params_MB, aes(x=a, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# ggplot(bs_params_MB, aes(x=b, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# ggplot(bs_params_MB, aes(x=c, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# mod <- lm(q10~sex*site, bs_params_MB)
+# summary(mod)
+# 
+# 
+# # let's look at the many sets of params we got from the bootstrap and do anova/linreg -- MS
+# full_df <- data.frame(q10=1, a=2, b=3, c=4,spp="mm", site="d2", sex='n')
+# for(i in 1:nrow(d_fitsMS)){ 
+#   spp <- d_fitsMS$spp[i] 
+#   site <- d_fitsMS$site[i]
+#   sex <- d_fitsMS$sex[i]
+#   tack_on <- as.data.frame(d_fitsMS[[8]][[i]][["t"]])
+#   tack_on$spp <- spp
+#   tack_on$site <- site
+#   tack_on$sex <- sex
+#   full_df <-rbind(full_df, tack_on)
+# }
+# 
+# bs_params_MS <- full_df[-1,]
+# 
+# ggplot(bs_params_MS, aes(x=q10, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# ggplot(bs_params_MS, aes(x=a, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# ggplot(bs_params_MS, aes(x=b, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# ggplot(bs_params_MS, aes(x=c, color=sex)) + geom_density() + facet_wrap(~site)
+# 
+# mod <- lm(q10~sex*site, bs_params_MS)
+# summary(mod)
 
 
 
