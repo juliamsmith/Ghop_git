@@ -58,14 +58,14 @@ WS <- WS_dat %>% dplyr::rename(dt=`Date Time`,
                                T_1.00=`Ambient temp`,
                                T_soil=`Soil temp`)
 
-WS$dt <- as.POSIXct(WS$dt, tz = "MST" ) #doesn't change the times, just sets the timezone
+WS$dt <- as.POSIXct(WS$dt, tz = "America/Denver" ) #doesn't change the times, just sets the timezone
 WS$ws <- as.numeric(WS$ws)
 WS$sr <- as.numeric(WS$sr)
 WS$T_1.00 <- as.numeric(WS$T_1.00)
 WS$T_soil <- as.numeric(WS$T_soil)
 
 
-WS <- WS %>% mutate(dt=dt+hours(1), t=format(dt, "%I:%M:%S %p")) #also need to adjust for MST
+WS <- WS %>% mutate(dt=dt+hours(1), t=format(dt, "%I:%M:%S %p")) #also need to adjust for America/Denver
 WS <- WS %>% mutate(t=format(dt, "%I:%M:%S %p")) 
 
 
@@ -160,11 +160,11 @@ thing <- c()
 for(i in 1:72719) { #nrows/10 rounded down
   thing <- c(thing, rep(i, 10))
 }
-thing <- c(thing, 72720) #there's one extra observation so it gets its own group
+thing <- c(thing, 72720) #there's 1 extra observations so it gets its own group
 nrel0$group <- thing
 nrel_less <- nrel0 %>% 
   group_by(group) %>% 
-  summarize(dt=mean(as.POSIXct(paste(DATE..MM.DD.YYYY., MST), format="%m/%d/%Y %H:%M", tz="MST")), 
+  summarize(dt=mean(as.POSIXct(paste(DATE..MM.DD.YYYY.), format="%m/%d/%Y %H:%M", tz="America/Denver")), 
             sr=mean(Global.Horizontal..W.m.2.), 
             T_2.00 = mean(Temperature...2m..deg.C.),
             ws_2.00=mean(Avg.Wind.Speed...2m..m.s.), surf=mean(Est.Surface.Roughness..m.))
@@ -174,8 +174,7 @@ nrel <- nrel_less %>% filter(dt>as.Date("5/15/2022 16:30", format="%m/%d/%Y %H:%
                                (dt>as.Date("5/15/2023 16:30", format="%m/%d/%Y %H:%M") & dt<as.Date("10/01/2023 12:21", format="%m/%d/%Y %H:%M")))
 
 ### Adjustments ####
-nrel$dt <- nrel$dt + 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
-
+nrel$dt <- nrel$dt #+ 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
 
 ## hydroshare data for B1 (hydroS) ####
 
@@ -210,7 +209,7 @@ hydroS <- hydroS %>% filter(dt>as.Date("5/15/2022 16:30", format="%m/%d/%Y %H:%M
 
 ### Adjustments ####
 
-hydroS$dt <- hydroS$dt + 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
+hydroS$dt <- hydroS$dt #+ 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
 
 
 
@@ -224,14 +223,14 @@ C1_niwot <- read_csv("G:/Shared drives/RoL_FitnessConstraints/projects/Reciproca
 
 C1_niwot$date.time_end <- as.POSIXct(C1_niwot$date.time_end)
 
-C1_niwot$date.time_end <- force_tz(C1_niwot$date.time_end, "MST")
+C1_niwot$date.time_end <- force_tz(C1_niwot$date.time_end, "America/Denver")
 
-C1_niwot_win <- C1_niwot %>% filter((date.time_end> "2022-5-15 16:30 MST" & date.time_end<"2022-10-01 12:21 MST") | 
-                                      (date.time_end>"2023-5-15 16:30 MST" & date.time_end<"2023-10-01 12:21 MST"))
+C1_niwot_win <- C1_niwot %>% filter((date.time_end> "2022-5-15 16:30" & date.time_end<"2022-10-01 12:21") | 
+                                      (date.time_end>"2023-5-15 16:30" & date.time_end<"2023-10-01 12:21"))
 
 C1_niwot_win_df <- as.data.frame(C1_niwot_win)
 
-C1_niwot_win_df$dt <- as.POSIXct(C1_niwot_win_df$date.time_end, format="%m/%d/%Y %H:%M", tz = "MST") 
+C1_niwot_win_df$dt <- as.POSIXct(C1_niwot_win_df$date.time_end, format="%m/%d/%Y %H:%M", tz = "America/Denver") 
 
 ### 2023 ####
 
@@ -268,7 +267,7 @@ C1_niwot_win_df$dt <- as.POSIXct(C1_niwot_win_df$date.time_end, format="%m/%d/%Y
 # 
 # #now d2 is what we want!
 # 
-# d2$TIMESTAMP <- as.POSIXct(d2$TIMESTAMP, tz = "MST" )
+# d2$TIMESTAMP <- as.POSIXct(d2$TIMESTAMP, tz = "America/Denver" )
 
 ### Bind 2022 and 2023 lter together ####
 # d2023 <- d2 %>% 
@@ -283,7 +282,7 @@ dlter$T_1.7[dlter$T_1.7 < - 20]=NA
 #dlter = rbind(d2022, d2023)  
 
 ### Adjustments ####
-dlter$dt <- dlter$dt + 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
+dlter$dt <- dlter$dt #+ 60*60 #TIMEZONE not sure why, but it seems this correction may be necessary
 
 
 #dlter <- dlter[-34674,] #WHY?
@@ -329,9 +328,9 @@ gap_inds <- which(diff(Eldobind$dt)>20)
 #the first one is the gap between the 2022 and 2023 field season
 
 #handling the three predictable gaps (beginnings and ends of seasons)
-edgesnrel_src<- nrel_src %>% filter((dt_src>"2022-05-15 00:00:01 MST" & dt_src < Eldobind$dt[1]-5) |
+edgesnrel_src<- nrel_src %>% filter((dt_src>"2022-05-15 00:00:01 America/Denver" & dt_src < Eldobind$dt[1]-5) |
                      # (dt_src>Eldobind$dt[gap_inds[1]]+5 & dt_src<Eldobind$dt[gap_inds[1]+1]-5) |
-                      (dt_src> Eldobind$dt[length(Eldobind$dt)] +5 & dt_src<"2023-10-01 00:00:01 MST"))
+                      (dt_src> Eldobind$dt[length(Eldobind$dt)] +5 & dt_src<"2023-10-01 00:00:01 America/Denver"))
 
 #handling the rest in a for loop... oops not quite how it works since I've already pared it down too much
 #make a list of conditions
@@ -364,7 +363,7 @@ summary(modTEldo)
 Eldobinds <- Eldobinds  %>% mutate(T_1.00pred = T_2.00_src*modTEldo$coefficients[2] + modTEldo$coefficients[1],
                                          T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                          T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
-                                         dtuse = as.POSIXct(ifelse(is.na(T_1.00), dt_src, dt), tz="MST")) #could also create a column that's a measurement of error
+                                         dtuse = as.POSIXct(ifelse(is.na(T_1.00), dt_src, dt), tz="America/Denver")) #could also create a column that's a measurement of error
 
 
 Eldobinds <- unique(Eldobinds)
@@ -390,13 +389,13 @@ ggplot(data= Eldobinds %>% filter(year(dtuse)==2023), aes(x=dtuse, color=T_1.00o
 
 #### Solar radiation ####
 #there is an issue with the solar radiation readings after 8/28/22
-ggplot(Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 MST"), aes(x=sr_src, y=sr)) + geom_point() + geom_smooth(method="lm")
-modsrEldo <- lm(sr~sr_src, Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 MST"))
+ggplot(Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 America/Denver"), aes(x=sr_src, y=sr)) + geom_point() + geom_smooth(method="lm")
+modsrEldo <- lm(sr~sr_src, Eldobinds %>% filter(dtuse<="2022-08-28 19:31:08 America/Denver"))
 summary(modsrEldo)
 
 Eldobinds <- Eldobinds  %>% mutate(srpred = sr_src*modsrEldo$coefficients[2] + modsrEldo$coefficients[1],
-                                   sruse = ifelse(dtuse>="2022-08-28 19:31:08 MST" | is.na(sr), srpred, sr),
-                                   srori = ifelse(dtuse>="2022-08-28 19:31:08 MST" | is.na(sr), "modelled", "direct")) #could also create a column that's a measurement of error
+                                   sruse = ifelse(dtuse>="2022-08-28 19:31:08 America/Denver" | is.na(sr), srpred, sr),
+                                   srori = ifelse(dtuse>="2022-08-28 19:31:08 America/Denver" | is.na(sr), "modelled", "direct")) #could also create a column that's a measurement of error
 
 #what we are going to use
 ggplot(data= Eldobinds %>% filter(year(dtuse)==2023), aes(x=dtuse, y=srpred)) + geom_line(color="blue") + theme_bw() + ggtitle("2023 Eldo Solar Radiation")
@@ -495,9 +494,9 @@ gap_inds <- which(diff(B1bind$dt)>20)
 #the first one is the gap between the 2022 and 2023 field season
 
 #handling the three predictable gaps (beginnings and ends of seasons)
-edgeshy_src<- hy_src %>% filter((dt_src>"2022-05-15 00:00:01 MST" & dt_src < B1bind$dt[1]-5) |
-                                      #(dt_src>B1bind$dt[gap_inds[2]]+5 & dt_src<"2023-05-15 00:00:01 MST") |
-                                      (dt_src> B1bind$dt[length(B1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01 MST"))
+edgeshy_src<- hy_src %>% filter((dt_src>"2022-05-15 00:00:01" & dt_src < B1bind$dt[1]-5) |
+                                      #(dt_src>B1bind$dt[gap_inds[2]]+5 & dt_src<"2023-05-15 00:00:01 America/Denver") |
+                                      (dt_src> B1bind$dt[length(B1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01"))
 
 #handling the rest in a for loop
 #make a list of conditions
@@ -530,7 +529,7 @@ summary(modTB1)
 B1binds <- B1binds  %>% mutate(T_1.00pred = T_2.50_src*modTB1$coefficients[2] + modTB1$coefficients[1],
                                    T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                    T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
-                                   dtuse = as.POSIXct(ifelse(is.na(dt), dt_src, dt), tz="MST")) 
+                                   dtuse = as.POSIXct(ifelse(is.na(dt), dt_src, dt), tz="America/Denver")) 
 
 #remove duplicates and one-offs
 B1binds <- unique(B1binds)
@@ -548,7 +547,7 @@ B1binds <- B1binds[order(B1binds$dtuse),]
 ##^ don't need to remove any
 
 #THIS IS A TEST
-ggplot(B1binds %>% filter(dtuse>"2022-06-22 00:00:01 MST" & dtuse<"2022-06-24 00:00:01 MST"), aes(x=dtuse)) + geom_line(aes(y=T_1.00), alpha=.5) + geom_line(aes(y=T_2.50_src),color="red", alpha=.5) + theme_bw() 
+ggplot(B1binds %>% filter(dtuse>"2022-06-22 00:00:01" & dtuse<"2022-06-24 00:00:01"), aes(x=dtuse)) + geom_line(aes(y=sr), alpha=.5) + geom_line(aes(y=sr_src),color="red", alpha=.5) + theme_bw() 
 
 
 ggplot(B1binds %>% filter(year(dtuse)==2023), aes(x=dtuse)) + geom_line(aes(y=T_1.00), alpha=.5) + geom_line(aes(y=T_1.00pred),color="red", alpha=.5) + theme_bw() 
@@ -624,7 +623,7 @@ Bb23$T_soilest <- soil_temperature(
 B1binds <- rbind(Bb22, Bb23)
 
 ##a demo
-#ggplot(B1binds %>% filter(dtuse>"2023-06-18 19:31:08 MST" & dt<"2023-06-23 19:31:08 MST"), aes(x=dtuse)) + geom_line(aes(y=T_soil), color="darkgreen") + geom_line(aes(y=T_soilest), color="lightgreen") + geom_line(aes(y=T_1.00use), color="blue")
+#ggplot(B1binds %>% filter(dtuse>"2023-06-18 19:31:08 America/Denver" & dt<"2023-06-23 19:31:08 America/Denver"), aes(x=dtuse)) + geom_line(aes(y=T_soil), color="darkgreen") + geom_line(aes(y=T_soilest), color="lightgreen") + geom_line(aes(y=T_1.00use), color="blue")
 B1binds_old <- B1binds
 B1binds <- B1binds %>% select(-sr2, -solarWm2ReferenceValue, -Group.1, -sr_src, -T_2.50_src, -ws_2.50_src)
 
@@ -638,8 +637,8 @@ C1 <- all %>% filter(site=="C1")
 #NOTE: as-is this causes an issue with solar radiation after that time
 #perhaps could find the relationship between 2023 sr and 2022 sr indirectly 
 #(through lter sr relationship)
-C1tomatch <- C1 %>% filter(dt<"2023-09-03 05:11:00 MST")
-C1extras <- C1 %>% filter(dt>"2023-09-03 05:11:00 MST")
+C1tomatch <- C1 %>% filter(dt<"2023-09-03 05:11:00 America/Denver")
+C1extras <- C1 %>% filter(dt>"2023-09-03 05:11:00 America/Denver")
 
 C1ints <- as.integer(C1tomatch$dt)
 ltints <- as.integer(dlter$dt)
@@ -672,9 +671,9 @@ gap_inds <- which(diff(C1bind$dt)>20)
 #the last several are on 8/03 where there's patchy cover
 
 #handling the three predictable gaps (beginnings and ends of seasons)
-edgeslter_src<- lter_src %>% filter((dt_src>"2022-05-15 00:00:01 MST" & dt_src < C1bind$dt[1]-5) |
-                                     # (dt_src>C1bind$dt[gap_inds[1]]+5 & dt_src<"2022-05-15 00:00:01 MST") |
-                                      (dt_src> C1bind$dt[length(C1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01 MST"))
+edgeslter_src<- lter_src %>% filter((dt_src>"2022-05-15 00:00:01 America/Denver" & dt_src < C1bind$dt[1]-5) |
+                                     # (dt_src>C1bind$dt[gap_inds[1]]+5 & dt_src<"2022-05-15 00:00:01 America/Denver") |
+                                      (dt_src> C1bind$dt[length(C1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01 America/Denver"))
 
 #handling the rest in a for loop
 #make a list of conditions
@@ -707,7 +706,7 @@ summary(modTC1)
 C1binds <- C1binds  %>% mutate(T_1.00pred = T_1.7_src*modTC1$coefficients[2] + modTC1$coefficients[1],
                                T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
-                               dtuse = as.POSIXct(ifelse(is.na(dt), dt_src, dt), tz="MST")) #could also create a column that's a measurement of error
+                               dtuse = as.POSIXct(ifelse(is.na(dt), dt_src, dt), tz="America/Denver")) #could also create a column that's a measurement of error
 
 
 C1binds <- unique(C1binds)
@@ -772,7 +771,7 @@ Cb22$T_soilest <- soil_temperature(
   shade = TRUE
 )
 
-Cb23 <- C1binds %>% filter(year(dtuse)==2023 & dtuse < "2023-09-03 05:11:00 MST")
+Cb23 <- C1binds %>% filter(year(dtuse)==2023 & dtuse < "2023-09-03 05:11:00 America/Denver")
 Cb23$T_soilest <- soil_temperature(
   z_r.intervals = 12,
   z_r=1,
@@ -790,7 +789,7 @@ Cb23$T_soilest <- soil_temperature(
   shade = TRUE
 )
 
-Cb23extras <- C1binds %>% filter(year(dtuse)==2023 & dtuse > "2023-09-03 05:11:00 MST")
+Cb23extras <- C1binds %>% filter(year(dtuse)==2023 & dtuse > "2023-09-03 05:11:00 America/Denver")
 
 C1binds <- plyr::rbind.fill(Cb22, Cb23, Cb23extras)
 
@@ -871,5 +870,5 @@ ggplot(climateuse, aes(x=dt_noyr)) +
 
 # STRAY TESTS ####
 
-#ggplot(data= C1bind %>% filter(dt>"2022-07-11 00:00:01 MST" & dt<"2022-07-12 00:00:01 MST")) + geom_line(aes(x=dt, y=sr), color="red") + geom_line(aes(x=dt_src, y=sr_src))+ theme_bw() + ggtitle("2023 C1 sr")
-#solar_noon(lon=-105.55, doy=day_of_year("2022-07-11 00:00:01 MST"), offset=-6) #kind of hard to tell
+#ggplot(data= C1bind %>% filter(dt>"2022-07-11 00:00:01 America/Denver" & dt<"2022-07-12 00:00:01 America/Denver")) + geom_line(aes(x=dt, y=sr), color="red") + geom_line(aes(x=dt_src, y=sr_src))+ theme_bw() + ggtitle("2023 C1 sr")
+#solar_noon(lon=-105.55, doy=day_of_year("2022-07-11 00:00:01 America/Denver"), offset=-6) #kind of hard to tell

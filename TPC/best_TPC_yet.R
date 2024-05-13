@@ -99,6 +99,16 @@ d_fe_og$rate[is.na(d_fe_og$rate)]=0
 
 d_wg_og <- mrg_refinedforwg %>% rename(rate=eaten) %>% filter(!is.na(temp) & !is.na(rate))
 
+d_wg_og <- d_wg_og %>% mutate(batch = paste(start_date, temp, sep="_"))
+
+d_wg_og$start_datetime <- as.POSIXct(d_wg_og$start_datetime, format="%m/%d/%Y %H:%M")
+d_wg_og$end_datetime <- as.POSIXct(d_wg_og$end_datetime, format="%m/%d/%Y %H:%M")
+
+d_wg_og <- d_wg_og %>% mutate(eat_time = end_datetime-start_datetime,
+                              wg_adj = rate/mass_adj,
+                              wg_double_adj=wg_adj/as.numeric(eat_time))
+
+
 #creating a new variable -- batch reflects combination of date and temperature
 d_fe_og <- d_fe_og %>% mutate(batch = paste(start_date, temp, sep="_"))
 
@@ -261,7 +271,6 @@ feedanovaMB5 <- Anova(feedmodMB5, type=3)
 
 aictab(list(feedmodMB1, feedmodMB2, feedmodMB3, feedmodMB4, feedmodMB5), modnames = c("feedmodMB1", "feedmodMB2", "feedmodMB3", "feedmodMB4", "feedmodMB5"))
 
-#1 or 2 -- not 3 or 4 (i.e. poly(temp 2)) (or 5)
 
 
 feedmodMS1 <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2  + #currently not giving me the layers I wanted with temp as well
@@ -309,8 +318,8 @@ feedanovaMS5 <- Anova(feedmodMS5, type=3)
 aictab(list(feedmodMS1, feedmodMS2, feedmodMS3, feedmodMS4, feedmodMS5), modnames = c("feedmodMS1", "feedmodMS2", "feedmodMS3", "feedmodMS4", "feedmodMS5"))
 
 
-#going with 2 here
-feedmodMS <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + #currently not giving me the layers I wanted with temp as well
+#going with 1 here
+feedmodMS <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 + #currently not giving me the layers I wanted with temp as well
                     (1|full_ID),  
                   na.action = 'na.omit', #uncommented
                   #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
@@ -320,7 +329,7 @@ feedmodMS <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as
 feedanovaMS <- Anova(feedmodMS, type=3)
 
 
-feedmodMB <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 - as.ordered(as.factor(site)):as.factor(sex) + 
+feedmodMB <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 + 
                     (1|full_ID),  
                   na.action = 'na.omit', #uncommented
                   #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with different fixed effects
@@ -336,8 +345,14 @@ dat <- ggpredict(feedmodMB)
 pM <- plot(dat)#, facet = TRUE)
 pM
 
+dat <- predict_response(feedmodMB, terms=c("temp", "site", "sex"))
+plot(dat)
+
+
+
 library(sjPlot)
 plot_model(feedmodMB)
+
 
 
 
@@ -351,11 +366,14 @@ ggplot(MBd) + geom_point(aes(x=temp, y=pred), color="red", alpha=.2) + geom_poin
 
 ggplot(MBd) + geom_point(aes(x=fec_double_adj, y=pred)) 
 
-dat <- ggpredict(feedmodMS)
+dat <- ggpredict(feedmodMB)
 pM <- plot(dat)#, facet = TRUE)
 pM
 
-plot_model(feedmodMS)
+dat <- predict_response(feedmodMS, terms=c("temp", "site", "sex"))
+plot(dat)
+
+plot_model(feedmodMB)
 
 MSd <- d_fe_og %>% filter(spp=="MS")
 
@@ -364,7 +382,11 @@ MSd <- MSd %>% mutate(pred=predict(feedmodMS))
 
 ggplot(MSd) + geom_point(aes(x=temp, y=pred), color="red", alpha=.2) + geom_point(aes(x=temp, y=fec_double_adj), alpha=.2) + facet_grid(site~sex)
 
+dat <- ggpredict(feedmodMS)
+pM <- plot(dat)#, facet = TRUE)
+pM
 
+plot_model(feedmodMB)
 
 #also want to generate estimated coefficients in a nice table
 sMB <- summary(feedmodMB)
@@ -434,6 +456,142 @@ perfs <- cbind(sMB, sMS)
 options(knitr.kable.NA = '')
 kable(perfs, digits=1, col.names=c("Coeff", "SE", "df", "t", "p", "Coeff", "SE", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() %>% add_header_above(c(" " = 1, "MB" = 5, "MS" = 5)) #%>% save_kable("Tables/Tab4_perfanova.png")
 
+
+
+#let's do the same thing for wheatgrass consumed (scaled by mass)
+#going with 1 here
+wgedmodMS <- lmer(wg_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 + #currently not giving me the layers I wanted with temp as well
+                    (1|full_ID),  
+                  na.action = 'na.omit', #uncommented
+                  #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with difwgrent fixed efwgts
+                  data = d_wg_og %>% filter(spp=="MS")) 
+
+
+wgedanovaMS <- Anova(wgedmodMS, type=3)
+
+
+wgedmodMB <- lmer(wg_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as.factor(sex))^2 + 
+                    (1|full_ID),  
+                  na.action = 'na.omit', #uncommented
+                  #REML = FALSE, #note... REML=FALSE should be used when comparing AICs of models with difwgrent fixed efwgts
+                  data = d_wg_og %>% filter(spp=="MB")) 
+
+
+wgedanovaMB <- Anova(wgedmodMB, type=3)
+
+
+library(ggeffects)
+
+dat <- ggpredict(wgedmodMB)
+pM <- plot(dat)#, facet = TRUE)
+pM
+
+library(sjPlot)
+plot_model(wgedmodMB)
+
+
+
+
+MBd <- d_wg_og %>% filter(spp=="MB")
+
+
+MBd <- MBd %>% mutate(pred=predict(wgedmodMB, interval="prediction"))
+
+ggplot(MBd) + geom_point(aes(x=temp, y=pred), color="red", alpha=.2) + geom_point(aes(x=temp, y=wg_double_adj), alpha=.2) + facet_grid(site~sex)
+
+ggplot(MBd) + geom_point(aes(x=wg_double_adj, y=pred)) 
+
+dat <- ggpredict(wgedmodMB)
+pM <- plot(dat)#, facet = TRUE)
+pM
+
+dat <- predict_response(wgedmodMB, terms=c("temp", "site", "sex"))
+plot(dat)
+
+plot_model(wgedmodMB)
+
+MSd <- d_wg_og %>% filter(spp=="MS")
+
+
+MSd <- MSd %>% mutate(pred=predict(wgedmodMS))
+
+ggplot(MSd) + geom_point(aes(x=temp, y=pred), color="red", alpha=.2) + geom_point(aes(x=temp, y=wg_double_adj), alpha=.2) + facet_grid(site~sex)
+
+dat <- ggpredict(wgedmodMS)
+pM <- plot(dat)#, facet = TRUE)
+pM
+
+dat <- predict_response(wgedmodMS, terms=c("temp", "site", "sex"))
+plot(dat)
+
+
+#also want to generate estimated coefficients in a nice table
+sMB <- summary(wgedmodMB)
+sMB <- data.frame(sMB[["coefficients"]])
+
+
+sMB$Significance <- "   "
+sMB$Significance[sMB$`Pr...t..`<.05] <- "*  "
+sMB$Significance[sMB$`Pr...t..`<.01] <- "** "
+sMB$Significance[sMB$`Pr...t..`<.001] <- "***"
+sMB$`Pr...t..` <- format(sMB$`Pr...t..`, scientific=TRUE, digits=3)
+sMB$`Pr...t..` <- as.character(sMB$`Pr...t..`)
+sMB <- sMB %>% unite(p, c(`Pr...t..`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(sMB, digits=3, col.names=c("Coefficient", "Std. Error", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("hoppingcoeff.png")
+
+
+
+wgedanovaMB$Significance <- "   "
+wgedanovaMB$Significance[wgedanovaMB$`Pr(>Chisq)`<.05] <- "*  "
+wgedanovaMB$Significance[wgedanovaMB$`Pr(>Chisq)`<.01] <- "** "
+wgedanovaMB$Significance[wgedanovaMB$`Pr(>Chisq)`<.001] <- "***"
+wgedanovaMB$`Pr(>Chisq)` <- format(wgedanovaMB$`Pr(>Chisq)`, scientific=TRUE, digits=3)
+wgedanovaMB$`Pr(>Chisq)` <- as.character(wgedanovaMB$`Pr(>Chisq)`)
+wgedanovaMB <- wgedanovaMB %>% unite(p, c(`Pr(>Chisq)`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(wgedanovaMB, digits=3, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("wgedanovaMB.png")
+
+
+
+
+
+sMS <- summary(wgedmodMS)
+sMS <- data.frame(sMS[["coefficients"]])
+
+
+sMS$Significance <- "   "
+sMS$Significance[sMS$`Pr...t..`<.05] <- "*  "
+sMS$Significance[sMS$`Pr...t..`<.01] <- "** "
+sMS$Significance[sMS$`Pr...t..`<.001] <- "***"
+sMS$`Pr...t..` <- format(sMS$`Pr...t..`, scientific=TRUE, digits=3)
+sMS$`Pr...t..` <- as.character(sMS$`Pr...t..`)
+sMS <- sMS %>% unite(p, c(`Pr...t..`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(sMS, digits=3, col.names=c("Coefficient", "Std. Error", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("hoppingcoeff.png")
+
+
+wgedanovaMS$Significance <- "   "
+wgedanovaMS$Significance[wgedanovaMS$`Pr(>Chisq)`<.05] <- "*  "
+wgedanovaMS$Significance[wgedanovaMS$`Pr(>Chisq)`<.01] <- "** "
+wgedanovaMS$Significance[wgedanovaMS$`Pr(>Chisq)`<.001] <- "***"
+wgedanovaMS$`Pr(>Chisq)` <- format(wgedanovaMS$`Pr(>Chisq)`, scientific=TRUE, digits=3)
+wgedanovaMS$`Pr(>Chisq)` <- as.character(wgedanovaMS$`Pr(>Chisq)`)
+wgedanovaMS <- wgedanovaMS %>% unite(p, c(`Pr(>Chisq)`, Significance), sep="")
+options(knitr.kable.NA = '')
+kable(wgedanovaMS, digits=3, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() #%>% save_kable("wgedanovaMS.png")
+
+perfanova <- cbind(wgedanovaMB, wgedanovaMS)
+
+options(knitr.kable.NA = '')
+kable(perfanova, digits=1, col.names=c("<var>&chi;<sup>2</sup></var>", "df", "p","<var>&chi;<sup>2</sup></var>", "df", "p"), escape=FALSE, format="html") %>% kable_styling() %>% add_header_above(c(" " = 1, "MB" = 3, "MS" = 3)) #%>% save_kable("Tables/Tab4_perfanova.png")
+
+
+
+perfs <- cbind(sMB, sMS)
+
+options(knitr.kable.NA = '')
+kable(perfs, digits=1, col.names=c("Coeff", "SE", "df", "t", "p", "Coeff", "SE", "df", "t", "p"), escape=FALSE, format="html") %>% kable_styling() %>% add_header_above(c(" " = 1, "MB" = 5, "MS" = 5)) #%>% save_kable("Tables/Tab4_perfanova.png")
 
 
 #note on rescaling and interactions: https://stackoverflow.com/questions/76308262/why-do-my-p-values-change-after-rescaling-variables-mixed-models
@@ -795,6 +953,12 @@ left_join(select(dfits1MB, sex, site, params) %>% unnest(params),
   theme_bw() +
   facet_wrap(~term, scales = 'free')
 
+#table instead
+dfits1MB <- d_fits3 %>% filter(spp=="MB")
+ljMB <- left_join(select(dfits1MB, sex, site, params) %>% unnest(params),
+          select(dfits1MB, sex, site, cis) %>% unnest(cis))
+
+
 #MS plot
 dfits1MS <- d_fits3 %>% filter(spp=="MS")
 left_join(select(dfits1MS, sex, site, params) %>% unnest(params),
@@ -804,6 +968,11 @@ left_join(select(dfits1MS, sex, site, params) %>% unnest(params),
   geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
   theme_bw() +
   facet_wrap(~term, scales = 'free')
+
+#table instead
+dfits1MS <- d_fits3 %>% filter(spp=="MS")
+ljMS <- left_join(select(dfits1MS, sex, site, params) %>% unnest(params),
+          select(dfits1MS, sex, site, cis) %>% unnest(cis))
 
 
 # create empty list column
