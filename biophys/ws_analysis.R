@@ -5,7 +5,7 @@ library(tidyverse)
 # 
 # wsd$sr <- wsd$X23
 # wsd$ws <- wsd$X15
-# wsd$dt <- as.POSIXct( wsd$X1, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
+# wsd$dt <- as.POSIXct( wsd$X1, format="%m/%d/%Y %H:%M" ) + 60*60 #plus 1hr
 # 
 # #mean of duplicate times -- a little quick and dirty... really want bins of +-1 min or so
 # wsd_less <- wsd %>% group_by(dt) %>% summarize(sr=mean(sr), ws=mean(ws))
@@ -54,11 +54,11 @@ wsdb1$site <- "B1"
 wsdc1$site <- "C1"
 wsdel$site <- "Eldo"
 
-wsdel <- wsdel %>% arrange(as.POSIXct(dt, format="%m/%d/%Y %H:%M", tz = "MST" ))
+wsdel <- wsdel %>% arrange(as.POSIXct(dt, format="%m/%d/%Y %H:%M" ))
 
 #for B1
-dff <- as.numeric(difftime(as.POSIXct(wsdb1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
-                            as.POSIXct(wsdb1$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+dff <- as.numeric(difftime(as.POSIXct(wsdb1$dt, format="%m/%d/%Y %H:%M" ),
+                            as.POSIXct(wsdb1$dt[1], format="%m/%d/%Y %H:%M" ),
                             units="mins"))
 
 #new idea is a double diff
@@ -72,14 +72,14 @@ bins[1] <- 0
 wsdb1$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
 
 #wsd %>% group_by(group) %>% (mean(dt))
-wsdb1$dt <- as.POSIXct(wsdb1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsdb1$dt <- as.POSIXct(wsdb1$dt, format="%m/%d/%Y %H:%M" ) 
 wsdb1_less <- aggregate(wsdb1, list(wsdb1$group, site=wsdb1$site), mean) 
 wsdb1_less <- wsdb1_less[,1:11]
 
 
 #for C1
-dff <- as.numeric(difftime(as.POSIXct(wsdc1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
-                           as.POSIXct(wsdc1$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+dff <- as.numeric(difftime(as.POSIXct(wsdc1$dt, format="%m/%d/%Y %H:%M" ),
+                           as.POSIXct(wsdc1$dt[1], format="%m/%d/%Y %H:%M" ),
                            units="mins"))
 
 #new idea is a double diff
@@ -93,7 +93,7 @@ bins[1] <- 0
 wsdc1$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
 
 #wsd %>% group_by(group) %>% (mean(dt))
-wsdc1$dt <- as.POSIXct(wsdc1$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsdc1$dt <- as.POSIXct(wsdc1$dt, format="%m/%d/%Y %H:%M" ) 
 wsdc1_less <- aggregate(wsdc1, list(wsdc1$group, site=wsdc1$site), mean) 
 wsdc1_less <- wsdc1_less[,1:11]
 
@@ -101,8 +101,8 @@ wsdc1_less <- wsdc1_less[,1:11]
 
 
 #for Eldo
-dff <- as.numeric(difftime(as.POSIXct(wsdel$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
-                           as.POSIXct(wsdel$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+dff <- as.numeric(difftime(as.POSIXct(wsdel$dt, format="%m/%d/%Y %H:%M" ),
+                           as.POSIXct(wsdel$dt[1], format="%m/%d/%Y %H:%M" ),
                            units="mins"))
 
 #new idea is a double diff
@@ -116,7 +116,7 @@ bins[1] <- 0
 wsdel$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
 
 #wsd %>% group_by(group) %>% (mean(dt))
-wsdel$dt <- as.POSIXct(wsdel$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+wsdel$dt <- as.POSIXct(wsdel$dt, format="%m/%d/%Y %H:%M" ) 
 wsdel_less <- aggregate(wsdel, list(wsdel$group, site=wsdel$site), mean) 
 wsdel_less <- wsdel_less[,1:11]
 
@@ -126,9 +126,9 @@ wsd_less <- rbind(wsdb1_less, wsdc1_less, wsdel_less)
 # wsd <- rbind(wsdb1, wsdc1, wsdel)
 # 
 # 
-# #as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" )
-# dff <- as.numeric(difftime(as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ),
-#                 as.POSIXct(wsd$dt[1], format="%m/%d/%Y %H:%M", tz = "MST" ),
+# #as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M" )
+# dff <- as.numeric(difftime(as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M" ),
+#                 as.POSIXct(wsd$dt[1], format="%m/%d/%Y %H:%M" ),
 #                 units="mins"))
 # # 
 # # #from https://stackoverflow.com/questions/66220486/group-a-vector-of-numbers-by-range
@@ -148,7 +148,7 @@ wsd_less <- rbind(wsdb1_less, wsdc1_less, wsdel_less)
 # wsd$group <- cut(dff, breaks=unique(bins), include.lowest=TRUE, right=FALSE)
 # 
 # #wsd %>% group_by(group) %>% (mean(dt))
-# wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) 
+# wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M" ) 
 # wsd_less <- aggregate(wsd, list(wsd$group, site=wsd$site), mean) 
 # wsd_less <- wsd_less[,2:11]
 # #res$dt <- as.POSIXct(res$dt, origin="1970-01-01")
@@ -164,25 +164,25 @@ wsd_less <- rbind(wsdb1_less, wsdc1_less, wsdel_less)
 # # 
 # # wsd_less <- wsd_less[3:length(wsd_less$sr),] #remove a few weird entries
 # # #wsdb1_less <- wsdb2less
-
-wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
-
-wsd_t <- wsd %>% gather("clim_var", "value", -dt, -site, -group) #prob want to expand to all ws vars (exc dt)
-
-#let's zero in on a location of overlap of coverage at all sites: mid-august 
-wsdzoom_more <- wsd_t %>% filter(as.Date(dt,format="%Y-%m-%d %H:%M", tz="MST")== "2023-08-15")
-
-#solar radiation
-ggplot(wsdzoom_more %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
-
+# 
+# wsd$dt <- as.POSIXct(wsd$dt, format="%m/%d/%Y %H:%M" ) + 60*60 #plus 1hr
+# 
+# wsd_t <- wsd %>% gather("clim_var", "value", -dt, -site, -group) #prob want to expand to all ws vars (exc dt)
+# 
+# #let's zero in on a location of overlap of coverage at all sites: mid-august 
+# wsdzoom_more <- wsd_t %>% filter(as.Date(dt,format="%Y-%m-%d %H:%M")== "2023-08-15")
+# 
+# #solar radiation
+# ggplot(wsdzoom_more %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
+# 
 
 
 #had forgotten to do this before
-wsd_less$dt <- as.POSIXct(wsd_less$dt, format="%m/%d/%Y %H:%M", tz = "MST" ) + 60*60 #plus 1hr
+wsd_less$dt <- as.POSIXct(wsd_less$dt, tz="America/Denver") #, format="%m/%d/%Y %H:%M" ) #+ 60*60 #plus 1hr... don't need to do +1hr if I do tz
 
 #wsd_less <- wsd_less %>% mutate(sr = ((sr-39) * 1.8) + ((25-T_1.25) * .0012))
 
-saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS")
+saveRDS(wsd_less, file = "biophys/all_WS_dat_excA1.RDS") #getwd() if not working
 
 wsd_less_t <- wsd_less %>% gather("clim_var", "value", -dt, -site) #prob want to expand to all ws vars (exc dt)
 
@@ -196,7 +196,7 @@ ggplot(wsd_less %>% mutate(v=ifelse(site=="C1", .75, ifelse(site=="B1", .5, .25)
 wsdzoom <- wsd_less_t %>% filter(as.Date(dt, format="%m/%d/%Y %H:%M")>as.Date("8/11/2023 16:30", format="%m/%d/%Y %H:%M") & as.Date(dt, format="%m/%d/%Y %H:%M")<as.Date("8/18/2023 12:21", format="%m/%d/%Y %H:%M"))
 
 #let's zero in on a location of overlap of coverage at all sites: mid-august 
-wsdzoom_more <- wsd_less_t %>% filter(as.Date(dt,format="%Y-%m-%d %H:%M", tz="MST")== "2023-08-15")
+wsdzoom_more <- wsd_less_t %>% filter(as.Date(dt,format="%Y-%m-%d %H:%M")== "2023-08-15")
 
 #solar radiation
 ggplot(wsdzoom_more %>% filter(clim_var=="sr"), aes(x=dt, y=value, col=site)) + geom_line() +ylab("solar radiation")
@@ -227,7 +227,7 @@ setwd("G:/Shared drives/RoL_FitnessConstraints/projects/TbandObs2023")
 obs <- read.csv("logs3.csv")
 
 obs <- obs %>% mutate(t=as.POSIXct(strptime(sub(".*at ", "", Date.Created), "%I:%M:%S %p"))+60*60, 
-                      dt=as.POSIXct(sub("at", "", Date.Created),format="%b %d- %Y %I:%M:%S %p", tz="MST") + 60*60)
+                      dt=as.POSIXct(sub("at", "", Date.Created),format="%b %d- %Y %I:%M:%S %p") + 60*60)
 
 obs <- obs %>% mutate(Site=case_when(
   Elevation>1000 & Elevation < 2100 ~ "Eldo",

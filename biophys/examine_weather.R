@@ -75,8 +75,9 @@ summary(mod)
 ggplot(El23, aes(x=T_soilest, y=T_soil)) + geom_point(alpha=.3) + geom_smooth(method="lm", color="green") + 
   geom_abline(intercept=0, slope=1, color="purple") 
 
-mean(abs(El23$T_soil-El23$T_soilest))
-mean(abs(El23$T_soil-(El23$T_soilest*mod$coefficients[2]+mod$coefficients[1])))
+El23_filt <- El23 %>% filter(!is.na(T_soil))
+mean(abs(El23_filt$T_soil-El23_filt$T_soilest))
+mean(abs(El23_filt$T_soil-(El23_filt$T_soilest*mod$coefficients[2]+mod$coefficients[1])))
 
 ggplot(El23 %>% filter(dtuse>"2023-07-20 19:31:08 MST" & dtuse<"2023-07-25 19:31:08 MST"), aes(x=dtuse)) + 
   geom_line(aes(y=T_soil), color="red") +

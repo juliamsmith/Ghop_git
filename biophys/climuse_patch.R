@@ -16,6 +16,11 @@ wshi <- mean(C1wsprofile$windspeed3)
 surf_r <- surface_roughness(u_r=c(wslow,	wsmed,	wshi), zr=c(.57, .82, 1.05))
 
 #set z, right now it's 5cm off the ground
-climateuse <- climateuse %>% mutate(T_lowuse=air_temp_profile(T_r=T_1.00use, u_r=.5, zr=2.5, z0=surf_r, z=.05, T_s=T_soil)) 
+climateuse <- climateuse %>% mutate(T_lowuse=air_temp_profile(T_r=T_1.00use, u_r=.5, zr=2.5, z0=surf_r, z=.05, T_s=T_soilest)) 
 
 #now climateuse is free to use!
+
+
+ggplot(climateuse, aes(x=dt_noyr, y=T_lowuse)) + 
+  geom_line(color="blue") +
+  facet_grid(site~year(dtuse)) + ggtitle("Closer-to-ground air temps")
