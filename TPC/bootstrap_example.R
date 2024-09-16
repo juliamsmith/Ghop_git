@@ -12,6 +12,7 @@ library(minpack.lm)
 #vignette("bootstrapping_models")
 
 
+
 # load in data
 data("chlorella_tpc")
 
@@ -77,7 +78,24 @@ for(i in 1:nrow(d_fits)){
 d_fits <- mutate(d_fits, output_boot = map(bootstrap, function(x) x$t))
 
 # calculate predictions with a gnarly written function
+x <-d_fits$output_boot[1]
+y <- d_fits$data[1]
+y<-as.data.frame(y)
+  tempo <- as.data.frame(x) %>%
+    drop_na() %>%
+    mutate(iter = 1:n()) %>%
+    group_by_all() %>%
+    do(data.frame(temp = seq(min(y$temp), max(y$temp), length.out = 100))) %>%
+    ungroup() %>%
+    mutate(pred = gaussian_1987(temp, rmax, topt, a))
+
+
+
+
+
+# calculate predictions with a gnarly written function
 d_fits <- mutate(d_fits, preds = map2(output_boot, data, function(x, y){
+  y<-as.data.frame(y)
   temp <- as.data.frame(x) %>%
     drop_na() %>%
     mutate(iter = 1:n()) %>%
@@ -87,3 +105,67 @@ d_fits <- mutate(d_fits, preds = map2(output_boot, data, function(x, y){
     mutate(pred = gaussian_1987(temp, rmax, topt, a))
   return(temp)
 }))
+
+#d_fits$preds <- d_fits$data
+
+pars <- list()
+
+for(i in 1:nrow(d_fits)){
+  x <- d_fits$output_boot[i]
+  y <- d_fits$data[i]
+  y <- as.data.frame(y)
+  tempo <- as.data.frame(x) %>%
+    drop_na() %>%
+    mutate(iter = 1:n()) %>%
+    group_by_all() %>%
+    do(data.frame(temp = seq(min(y$temp), max(y$temp), length.out = 100))) %>%
+    ungroup() %>%
+    mutate(pred = gaussian_1987(temp, rmax, topt, a))
+  pars[[i]] <- tempo
+  #d_fits[[11]][[i]]<- tempo
+  #print(as.list(as_tibble(tempo)))
+}
+
+my_dataframe <- do.call(data.frame, my_list)
+d_fits$preds <- pars
+
+i <- 1
+x <- d_fits$output_boot[i]
+y <- d_fits$data[i]
+y <- as.data.frame(y)
+tempo <- as.data.frame(x) %>%
+  drop_na() %>%
+  mutate(iter = 1:n()) %>%
+  group_by_all() %>%
+  do(data.frame(temp = seq(min(y$temp), max(y$temp), length.out = 100))) %>%
+  ungroup() %>%
+  mutate(pred = gaussian_1987(temp, rmax, topt, a))
+#d_fits[[11]][[i]]<- tempo
+
+
+# select, unnest and calculate 95% CIs of predictions
+boot_conf_preds <- select(d_fits, curve_id, preds) %>%
+  unnest(preds) %>%
+  group_by(curve_id, temp) %>%
+  summarise(conf_lower = quantile(pred, 0.025),
+            conf_upper = quantile(pred, 0.975),
+            .groups = 'drop')
+
+d_fits <- mutate(d_fits, params = map(nls_fit, broom::tidy),
+                 cis = map(bootstrap, function(x){
+                   temp <- confint(x, method = 'bca') %>%
+                     as.data.frame() %>%
+                     rename(conf_lower = 1, conf_upper = 2) %>%
+                     rownames_to_column(., var = 'term')
+                   return(temp)
+                 }))
+
+# join parameter and confidence intervals in the same dataset 
+left_join(select(d_fits, curve_id, growth_temp, flux, params) %>% unnest(params),
+          select(d_fits, curve_id, growth_temp, flux, cis) %>% unnest(cis)) %>%
+  ggplot(., aes(curve_id, estimate)) +
+  geom_point(size = 4) +
+  geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
+  theme_bw() +
+  facet_wrap(~term, scales = 'free')
+#> Joining with `by = join_by(curve_id, growth_temp, flux, term)`

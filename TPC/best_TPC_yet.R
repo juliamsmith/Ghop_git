@@ -71,6 +71,10 @@ morew2d <- morew2d %>% select(-ID_prime, -rng, -notes)
 mod<- lm(`wg_drymass (mg)`~ 0+ wet_mass, morew2d)
 summary(mod)
 
+mg2mg <- morew2d %>% mutate(wet_mass=wet_mass*1000)
+mod2<- lm(`wg_drymass (mg)`~ 0+ wet_mass, mg2mg)
+summary(mod2)
+
 newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
 newdf$wet_mass <- as.numeric(newdf$wet_mass)
 predictions <- predict(mod, newdf, 
@@ -174,6 +178,16 @@ ggplot(d_fe_og %>% filter(spp=="MS", site=="A1"), aes(x=temp, y=as.numeric(`fece
 ggplot(d_fe_og %>% filter(spp=="MS", site=="B1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
 
 
+ggplot(d_fe_og %>% filter(spp=="MB", site=="A1"), aes(x=temp, y=fec_tadj, color=full_ID, shape=sex)) + geom_point() + geom_line() 
+ggplot(d_fe_og %>% filter(spp=="MB", site=="B1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/eat_time, color=full_ID, shape=sex)) + geom_point() + geom_line() 
+ggplot(d_fe_og %>% filter(spp=="MB", site=="C1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/eat_time, color=full_ID, shape=sex)) + geom_point() + geom_line() 
+
+ggplot(d_fe_og %>% filter(spp=="MS", site=="Eldo"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/eat_time, color=full_ID, shape=sex)) + geom_point() + geom_line() 
+ggplot(d_fe_og %>% filter(spp=="MS", site=="A1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/eat_time, color=full_ID, shape=sex)) + geom_point() + geom_line() 
+ggplot(d_fe_og %>% filter(spp=="MS", site=="B1"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/eat_time, color=full_ID, shape=sex)) + geom_point() + geom_line() 
+
+
+
 #sanity check on batches... I think the batches don't look too distinct from one another (overall since site shouldn't matter) 
 ggplot(d_fe_og %>% filter(spp=="MB"), aes(x=temp, y=as.numeric(`feces_drymass (mg)`)/mass_adj, color=batch, shape=sex)) + geom_jitter(width=1, height=0) #+ facet_wrap(~site) 
 
@@ -182,14 +196,18 @@ ggplot(d_fe_og %>% filter(spp=="MS"), aes(x=temp, y=as.numeric(`feces_drymass (m
 
 #and now just doing a regular viz like before
 
-ggplot(d_fe_og, aes(x=temp, y=fec, color=sex)) + geom_point() + geom_smooth() + facet_grid(spp~site)
+ggplot(d_wg_og, aes(x=temp, y=fecesdry/rate, color=sex)) + geom_point() + geom_smooth() + facet_grid(spp~site)
+ggplot(d_wg_og, aes(x=temp, y=rate, color=sex)) + geom_point() + geom_smooth() + facet_grid(spp~site)
+ggplot(d_wg_og, aes(x=rate, y=fecesdry, color=as.factor(temp), lty=sex)) + geom_point() + geom_smooth(method="lm", se=FALSE) + facet_grid(spp~site)
+d_wg_og %>% group_by(spp, site, sex, temp) %>% summarise(assim=mean(fecesdry/rate), sd=sd(fecesdry/rate))
+#try the same thing but with mean fit because small differences in mass prob don't matter
+
 
 ggplot(d_fe_og, aes(x=temp, y=fec_double_adj, color=sex)) + geom_point() + geom_smooth() + facet_grid(spp~site)
 
 ggplot(d_fe_og %>% filter(site=="A1", spp=="MS", temp==43), aes(x=full_ID, y=fec_double_adj, shape=sex, color=start_date)) + geom_point()
 
 ggplot(d_fe_og %>% filter(spp=="MS", temp==43), aes(x=full_ID, y=fec_double_adj, shape=sex, color=start_date)) + geom_point() #+ facet_wrap(~site)
-
 
 #d_fe_og %>% filter(spp=="MS") %>% group_by()
 
@@ -340,6 +358,9 @@ feedmodMB <- lmer(fec_double_adj ~ (poly(temp, 3)+as.ordered(as.factor(site))+as
 
 feedanovaMB <- Anova(feedmodMB, type=3)
 
+
+
+ggplot(d_fe_og %>% filter(spp=="MB", !(start_date=="7/17/2023")), aes(x=temp, y=fec_double_adj, shape=sex, color=start_date, group=full_ID)) + geom_line(alpha=.5, color="gray") + geom_point(alpha=.5) + facet_grid(sex~site)
 
 library(ggeffects)
 
@@ -991,14 +1012,14 @@ nls_multstart_progress <- function(formula, data = parent.frame(), iter, start_l
                 control = control, modelweights = modelweights, ...)
 }
 
-#WORKING WITH FECES SCALED BY HOPPER WEIGHT AND TIME
+#WORKING WITH FECES SCALED BY HOPPER WEIGHT AND TIME --edit just time
 
 ##need to drop a bunch of columns (I think this may be necessary for nesting)
 d_fe_sc <- d_fe_og %>% mutate(rate=fec_tadj) %>% select(spp, site, sex, temp, rate) #fec_double_adj
 
 
 # start progress bar and estimate time it will take
-number_of_models <- 4
+number_of_models <- 2
 number_of_curves <- nrow(unique(d_fe_sc %>%select(spp, site, sex)))
 
 # setup progress bar
@@ -1019,24 +1040,33 @@ d_fits_fe_sc <- nest(d_fe_sc, data = c(temp, rate)) %>%
                                                       upper = get_upper_lims(.x$temp, .x$rate, model_name = 'gaussian_1987'),
                                                       supp_errors = 'Y',
                                                       convergence_count = FALSE)),
-         beta = map(data, ~nls_multstart_progress(rate~beta_2012(temp = temp, a, b, c, d, e),
-                                                  data = .x,
-                                                  iter = c(6,6,6,6,6),
-                                                  start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'beta_2012') - 10,
-                                                  start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'beta_2012') + 10,
-                                                  lower = get_lower_lims(.x$temp, .x$rate, model_name = 'beta_2012'),
-                                                  upper = get_upper_lims(.x$temp, .x$rate, model_name = 'beta_2012'),
-                                                  supp_errors = 'Y',
-                                                  convergence_count = FALSE)),
-         weibull = map(data, ~nls_multstart_progress(rate~weibull_1995(temp = temp, a,topt,b,c),
-                                                     data = .x,
-                                                     iter = c(4,4,4,4),
-                                                     start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'weibull_1995') - 10,
-                                                     start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'weibull_1995') + 10,
-                                                     lower = get_lower_lims(.x$temp, .x$rate, model_name = 'weibull_1995'),
-                                                     upper = get_upper_lims(.x$temp, .x$rate, model_name = 'weibull_1995'),
-                                                     supp_errors = 'Y',
-                                                     convergence_count = FALSE)),
+         # beta = map(data, ~nls_multstart_progress(rate~beta_2012(temp = temp, a, b, c, d, e),
+         #                                          data = .x,
+         #                                          iter = c(6,6,6,6,6),
+         #                                          start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'beta_2012') - 10,
+         #                                          start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'beta_2012') + 10,
+         #                                          lower = get_lower_lims(.x$temp, .x$rate, model_name = 'beta_2012'),
+         #                                          upper = get_upper_lims(.x$temp, .x$rate, model_name = 'beta_2012'),
+         #                                          supp_errors = 'Y',
+         #                                          convergence_count = FALSE)),
+         # lrf = map(data, ~nls_multstart(rate~lrf_1991(temp = temp, rmax, topt, tmin, tmax),
+         #                                data = .x,
+         #                                iter = c(3,3,3,3),
+         #                                start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'lrf_1991') - 10,
+         #                                start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'lrf_1991') + 10,
+         #                                lower = get_lower_lims(.x$temp, .x$rate, model_name = 'lrf_1991'),
+         #                                upper = get_upper_lims(.x$temp, .x$rate, model_name = 'lrf_1991'),
+         #                                supp_errors = 'Y',
+         #                                convergence_count = FALSE)),
+         # weibull = map(data, ~nls_multstart_progress(rate~weibull_1995(temp = temp, a,topt,b,c),
+         #                                             data = .x,
+         #                                             iter = c(4,4,4,4),
+         #                                             start_lower = get_start_vals(.x$temp, .x$rate, model_name = 'weibull_1995') - 10,
+         #                                             start_upper = get_start_vals(.x$temp, .x$rate, model_name = 'weibull_1995') + 10,
+         #                                             lower = get_lower_lims(.x$temp, .x$rate, model_name = 'weibull_1995'),
+         #                                             upper = get_upper_lims(.x$temp, .x$rate, model_name = 'weibull_1995'),
+         #                                             supp_errors = 'Y',
+         #                                             convergence_count = FALSE)),
          rezende = map(data, ~nls_multstart(rate~rezende_2019(temp = temp, q10, a,b,c),
                                             data = .x,
                                             iter = c(4,4,4,4),
@@ -1064,7 +1094,7 @@ d_preds_fe_sc <- mutate(d_fits_fe_sc, new_data = map(data, ~tibble(temp = seq(mi
   # get rid of original data column
   select(., -data) %>%
   # stack models into a single column, with an id column for model_name
-  pivot_longer(., names_to = 'model_name', values_to = 'fit', c(gaussian,beta,weibull, rezende)) %>%
+  pivot_longer(., names_to = 'model_name', values_to = 'fit', c(gaussian, rezende)) %>%
   # create new list column containing the predictions
   # this uses both fit and new_data list columns
   mutate(preds = map2(fit, new_data, ~augment(.x, newdata = .y))) %>%
@@ -1103,14 +1133,14 @@ ggplot(d_preds_fe_sc %>% filter(spp=="MS")) +
 
 
 # stack models and calculate extra params
-d_fe_sc_params <- pivot_longer(d_fits_fe_sc, names_to = 'model_name', values_to = 'fit', c(gaussian,beta,weibull, rezende)) %>%
+d_fe_sc_params <- pivot_longer(d_fits_fe_sc, names_to = 'model_name', values_to = 'fit', c(gaussian, rezende)) %>% #removed beta,lrf
   mutate(params = map(fit, calc_params)) %>%
   select(spp, site, sex, model_name, params) %>%
   unnest(params)
 
 # stack models and calculate extra params
 # stack models  
-d_stack_fe_sc <- pivot_longer(d_fits_fe_sc, names_to = 'model_name', values_to = 'fit', c(gaussian,beta,weibull, rezende))
+d_stack_fe_sc <- pivot_longer(d_fits_fe_sc, names_to = 'model_name', values_to = 'fit', c(gaussian,beta,lrf, rezende))
 
 # get parameters using tidy
 d_fe_sc_params <- d_stack_fe_sc %>%
