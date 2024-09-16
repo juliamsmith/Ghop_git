@@ -106,8 +106,11 @@ get_mrs <- function(tb, mass, elev, b0, b1, b2, b3, k=8.62*10^-5) {
 ##^ this gives the same as get_mrs
 
 get_mr_losses <- function(mrs){
-  lipid.g <- .7*mrs/2
-  loss.kJ <- lipid.g*39 #assume that 39 kJ*g^-1
+  o2.ml <- 1/.7*mrs
+  lipid.mg <- o2.ml/2
+  loss.kJ <- lipid.mg*39/1000 #assume 39kJ/g
+  # lipid.g <- .7*mrs/2
+  # loss.kJ <- lipid.g*39 #assume that 39 kJ*g^-1
   return(loss.kJ)
 }
 
@@ -162,12 +165,12 @@ pop_energy <- function(sppi, sitei, sexi,start_date, end_date, pops, clim){
 ## RUN IT AND VISUALIZE ####                   
 
 #pick a time range and try it                   
-thing <- pop_energy("MB", "A1", "M", "2022-06-23", "2022-07-05", pops, clim)
+#thing <- pop_energy("MB", "A1", "M", "2022-06-23", "2022-07-05", pops, clim)
 
 
 #now do it for all populations and look over a range of temps
-for(p in 1:12){ #can show 1:12... they are all the same
-  temps = 1:45
+for(p in 1){ #can show 1:12
+  temps = 1:40
   d<- get_energy_gains(pops[p,]$spp,pops[p,]$site,pops[p,]$sex,temps, pops)
   d$temps <- temps
   d2 <- d %>% pivot_longer(cols=c(gains, losses, net_gains), names_to="meas", values_to="vals")
@@ -177,32 +180,83 @@ for(p in 1:12){ #can show 1:12... they are all the same
     ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
   print(pl)
   
-  #See TPC with TPC units
-  tpcpl <- ggplot() + geom_line(aes(1:45, 
-                                    rezende_2019(1:45, 
-                                                 pops$tpc_q10[p], 
-                                                 pops$tpc_a[p], 
-                                                 pops$tpc_b[p], 
-                                                 pops$tpc_c[p]))) + 
-    labs(x="temperature (C)", y="dried feces/time (mg/hr)")  +
-    ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
-  print(tpcpl)
-  mrs <- 
-  rmrpl <- ggplot() + geom_line(aes(1:45,
-                                get_mrs(1:45, 
-                                        pop_dat$mass[p], 
-                                        pop_dat$elev[p], 
-                                        pop_dat$rmr_b0[p], 
-                                        pop_dat$rmr_b1[p], 
-                                        pop_dat$rmr_b2[p], 
-                                        pop_dat$rmr_b3[p])/(pop_dat$mass[p]^.9))) +
-    labs(x="temperature (C)", y="CO2/time (ml/(g*hr)") + #putting it in /g but doesn't have to be
-    ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
-  print(rmrpl)
+  # #See TPC with TPC units
+  # tpcpl <- ggplot() + geom_line(aes(1:40, 
+  #                                   rezende_2019(1:40, 
+  #                                                pops$tpc_q10[p], 
+  #                                                pops$tpc_a[p], 
+  #                                                pops$tpc_b[p], 
+  #                                                pops$tpc_c[p]))) + 
+  #   labs(x="temperature (C)", y="dried feces/time (mg/hr)")  +
+  #   ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
+  # print(tpcpl)
+  # mrs <- 
+  # rmrpl <- ggplot() + geom_line(aes(1:40,
+  #                               get_mrs(1:40, 
+  #                                       pop_dat$mass[p], 
+  #                                       pop_dat$elev[p], 
+  #                                       pop_dat$rmr_b0[p], 
+  #                                       pop_dat$rmr_b1[p], 
+  #                                       pop_dat$rmr_b2[p], 
+  #                                       pop_dat$rmr_b3[p])/(pop_dat$mass[p]^.9))) +
+  #   labs(x="temperature (C)", y="CO2/time (ml/(hr*(g^.9))") + #putting it in /g but doesn't have to be
+  #   ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
+  # print(rmrpl)
 }
 
+plot(1:45, rezende_2019(1:45, 
+                        pops$tpc_q10[1], 
+                        pops$tpc_a[1], 
+                        pops$tpc_b[1], 
+                        pops$tpc_c[1]))
+
+
+#JUST JULIA'S SCRATCH PAD
+# ###
+# spec.dat=read.csv("SpecData.csv")
+# 
+# vCO2= function(M, Tb, elev_m, b0, b1, b2, b3, k=8.62*10^-5) exp(b0 +b1*log(M)+b2*(1/(k*(Tb+273.15)))+b3*elev_m)
+# lipid.g= function(vCO2) (0.7*vCO2/2)
+# 
+# plot(1:60, vCO2(M=spec.dat[1,"Massg_C1"], 1:60, elev_m=3048, b0=spec.dat[1,"b0"], b1=spec.dat[1,"b1"], b2=spec.dat[1,"b2"], b3=spec.dat[1,"b3"]), type="l", ylab="MR (ml CO2/hr)", xlab="body temperature (C)", cex.lab=1.5)
+# 
+# plot(1:60, vCO2(M=spec.dat[1,"Massg_C1"], 1:60, elev_m=3048, b0=pop_dat$rmr_b0[1], b1=pop_dat$rmr_b1[1], b2=pop_dat$rmr_b2[1], b3=pop_dat$rmr_b3[1]), type="l", ylab="MR (ml CO2/hr)", xlab="body temperature (C)", cex.lab=1.5)
+
+tbs=35
+q10=pops$tpc_q10[1]
+a=pops$tpc_a[1]
+b=pops$tpc_b[1] 
+c=pops$tpc_c[1]
+dry.fec.mg.hr <- rezende_2019(tbs,q10,a,b,c)
+#print(dry.fec.mg.hr)
+assim.rate=.4
+dry.wga.mg.hr <- dry.fec.mg.hr*assim.rate/(1-assim.rate) #dry wg assimilated per hr
+wet.wga.mg.hr <- dry.wga.mg.hr*(1/.1489) #linear relationship between wet and dry
+kcal.hr <- 329/100000 * wet.wga.mg.hr #329 kcal/100g 
+kJ.hr <- kcal.hr*4.184
+
+#kcal.hr.d <- dry.wga.mg.hr*25/8000 #from powder https://www.verywellfit.com/the-benefits-of-wheatgrass-88680
+kcal.hr.d <- dry.wga.mg.hr*14.8/1000 #from Fewell & Harrison
 
 
 
 
+### I think it may be MR actually:
+p=1
+mrs <- get_mrs(35, 
+        pop_dat$mass[p], 
+        pop_dat$elev[p], 
+        pop_dat$rmr_b0[p], 
+        pop_dat$rmr_b1[p], 
+        pop_dat$rmr_b2[p], 
+        pop_dat$rmr_b3[p])
+
+
+
+
+  lipid.mg <- (1/.7)*mrs/2
+  loss.kJ <- lipid.mg*39/1000 #assume that 39 kJ*g^-1
+print(loss.kJ)
+
+print(mrs*1/.7*.437)
 
