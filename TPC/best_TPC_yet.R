@@ -75,6 +75,9 @@ mg2mg <- morew2d %>% mutate(wet_mass=wet_mass*1000)
 mod2<- lm(`wg_drymass (mg)`~ 0+ wet_mass, mg2mg)
 summary(mod2)
 
+mod2<- lm(wet_mass~ 0+ `wg_drymass (mg)`, mg2mg)
+summary(mod2)
+
 newdf <- data.frame(wg %>% select(wet_mass, plot_ID))
 newdf$wet_mass <- as.numeric(newdf$wet_mass)
 predictions <- predict(mod, newdf, 

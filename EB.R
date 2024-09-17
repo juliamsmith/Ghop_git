@@ -123,12 +123,22 @@ get_mr_losses <- function(mrs){
 # vCO2= function(M, Tb, elev_m, b0, b1, b2, b3, k=8.62*10^-5) exp(b0 +b1*log(M)+b2*(1/(k*(Tb+273.15)))+b3*elev_m)
 # lipid.g= function(vCO2) (0.7*vCO2/2)
 
+# get_tpc_gains <- function(tbs, q10, a, b, c, assim.rate=.40){ #assim assumption
+#   dry.fec.mg.hr <- rezende_2019(tbs,q10,a,b,c)
+#   #print(dry.fec.mg.hr)
+#   dry.wga.mg.hr <- dry.fec.mg.hr*assim.rate/(1-assim.rate) #dry wg assimilated per hr, see eq 2 Youngblood https://login.offcampus.lib.washington.edu/login?qurl=https://esajournals.onlinelibrary.wiley.com%2fdoi%2ffull%2f10.1002%2fecm.1550
+#   wet.wga.mg.hr <- dry.wga.mg.hr*(1/.1489) #linear relationship between wet and dry
+#   kcal.hr <- 329/100000 * wet.wga.mg.hr #329 kcal/100g source: https://www.microgreensilo.com/microgreen-types/wheatgrass/#nutrition-facts
+#   kJ.hr <- kcal.hr*4.184
+#   return(kJ.hr)
+# }
+
 get_tpc_gains <- function(tbs, q10, a, b, c, assim.rate=.40){ #assim assumption
   dry.fec.mg.hr <- rezende_2019(tbs,q10,a,b,c)
   #print(dry.fec.mg.hr)
-  dry.wga.mg.hr <- dry.fec.mg.hr*assim.rate/(1-assim.rate) #dry wg assimilated per hr, see eq 2 Youngblood https://login.offcampus.lib.washington.edu/login?qurl=https://esajournals.onlinelibrary.wiley.com%2fdoi%2ffull%2f10.1002%2fecm.1550
-  wet.wga.mg.hr <- dry.wga.mg.hr*(1/.1489) #linear relationship between wet and dry
-  kcal.hr <- 329/100000 * wet.wga.mg.hr #329 kcal/100g source: https://www.microgreensilo.com/microgreen-types/wheatgrass/#nutrition-facts
+  dry.fec.mg.hr[dry.fec.mg.hr<0]=0
+  dry.wga.mg.hr <- dry.fec.mg.hr*12.8/14.8*assim.rate/(1-assim.rate) #see harrison & fewell
+  kcal.hr <- dry.wga.mg.hr*14.8/1000 #from Fewell & Harrison
   kJ.hr <- kcal.hr*4.184
   return(kJ.hr)
 }
@@ -136,7 +146,7 @@ get_tpc_gains <- function(tbs, q10, a, b, c, assim.rate=.40){ #assim assumption
 
 get_energy_gains <- function(sppi, sitei, sexi, tbs, pops){
   pop_dat <- pops %>% filter(spp==sppi & site==sitei & sex==sexi)
-  print(pop_dat)
+  #print(pop_dat)
   gains <- get_tpc_gains(tbs, 
                         pop_dat$tpc_q10, 
                         pop_dat$tpc_a, 
@@ -144,8 +154,6 @@ get_energy_gains <- function(sppi, sitei, sexi, tbs, pops){
                         pop_dat$tpc_c)
   mrs <- get_mrs(tbs, pop_dat$mass[1], pop_dat$elev[1], pop_dat$rmr_b0[1], pop_dat$rmr_b1[1], pop_dat$rmr_b2[1], pop_dat$rmr_b3[1])
   losses <- get_mr_losses(mrs)
-  print(gains)
-  print(losses)
   net_gains <- gains - losses
   df <- data.frame(gains, losses, net_gains)
   return(df) 
@@ -161,7 +169,8 @@ pop_energy <- function(sppi, sitei, sexi,start_date, end_date, pops, clim){
   df <- cbind(eb, tbs, dts)
   return(df)
 }         
-                   
+     
+
 ## RUN IT AND VISUALIZE ####                   
 
 #pick a time range and try it                   
@@ -169,16 +178,21 @@ pop_energy <- function(sppi, sitei, sexi,start_date, end_date, pops, clim){
 
 
 #now do it for all populations and look over a range of temps
-for(p in 1){ #can show 1:12
-  temps = 1:40
+dall <- data.frame(temps=NA, meas=NA, vals=NA, spp=NA, site=NA, sex=NA)
+for(p in 1:12){ #can show 1:12
+  temps = 1:60
   d<- get_energy_gains(pops[p,]$spp,pops[p,]$site,pops[p,]$sex,temps, pops)
   d$temps <- temps
   d2 <- d %>% pivot_longer(cols=c(gains, losses, net_gains), names_to="meas", values_to="vals")
-  pl <- ggplot(d2, aes(x=temps, vals, color=meas)) + 
-    labs(x="temperature (C)", y="energy (kJ/hr)") +
-    geom_line() +
-    ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
-  print(pl)
+  d2$spp <- pops[p,]$spp
+  d2$site <- pops[p,]$site
+  d2$sex <- pops[p,]$sex 
+  dall <- rbind(dall, d2)
+  # pl <- ggplot(d2, aes(x=temps, vals, color=meas)) + 
+  #   labs(x="temperature (C)", y="energy (kJ/hr)") +
+  #   geom_line() +
+  #   ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
+  # print(pl)
   
   # #See TPC with TPC units
   # tpcpl <- ggplot() + geom_line(aes(1:40, 
@@ -203,6 +217,19 @@ for(p in 1){ #can show 1:12
   #   ggtitle(paste(pops$spp[p],pops$site[p], pops$sex[p]))
   # print(rmrpl)
 }
+
+dall <- dall %>% mutate(site=fct_relevel(site, "Eldo", "A1", "B1", "C1"))
+MB <- dall %>% filter(spp=="MB")
+MS <- dall %>% filter(spp=="MS")
+
+ggplot(MB, aes(x=temps, y=vals, color=meas)) + geom_line() + 
+  labs(x="temperature (C)", y="energy (kJ/hr)")  + facet_grid(site~sex)+
+  ggtitle("MB populations")
+
+ggplot(MS, aes(x=temps, y=vals, color=meas)) + geom_line() + 
+  labs(x="temperature (C)", y="energy (kJ/hr)")  + facet_grid(site~sex)+
+  ggtitle("MS populations")
+
 
 plot(1:45, rezende_2019(1:45, 
                         pops$tpc_q10[1], 
