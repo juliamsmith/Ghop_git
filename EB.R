@@ -2,7 +2,20 @@
 library(tidyverse)
 library(rTPC)
 
-clim <- read.csv("biophys/climateuse.csv")
+clim <- read.csv("biophys/climateuse2.csv")
+
+fix_datetime <- function(x) {
+  # Convert to character if it's not already
+  x <- as.character(x)
+  
+  # For entries that only have a date, add " 00:00:00" to the end
+  x[!grepl("\\d{2}:\\d{2}:\\d{2}$", x)] <- paste(x[!grepl("\\d{2}:\\d{2}:\\d{2}$", x)], "00:00:00")
+  
+  # Convert back to POSIXct
+  as.POSIXct(x, format="%Y-%m-%d %H:%M:%S", tz="America/Denver")
+}
+
+clim$dtuse <- fix_datetime(clim$dtuse)
 
 #NOTES ON APPROXIMATELY WHAT TO DO
 
@@ -40,6 +53,8 @@ clim <- read.csv("biophys/climateuse.csv")
 
 ## Hopper attributes
 
+p <- readxl::read_xlsx("C:/Users/smith/Downloads/SpecDat2.xlsx")
+
 pops <- data.frame(spp=c(rep("MB", 6), 
                          rep("MS", 6)), 
                    site=c(rep("A1",2), 
@@ -48,11 +63,11 @@ pops <- data.frame(spp=c(rep("MB", 6),
                           rep("Eldo",2),
                           rep("A1",2), 
                           rep("B1",2)),
-                   elev=c(rep(2185,2), rep(2591,2), rep(3014,2), 
-                          rep(1740,2), rep(2185,2), rep(2591,2)), # elevation corresponding to site
+                   elev=c(rep(2195,2), rep(2591,2), rep(3014,2), 
+                          rep(1740,2), rep(2195,2), rep(2591,2)), # elevation corresponding to site
                    sex=rep(c("M", "F"), 6),
-                   mass=c(.4,.7,.35,.65,.3,.6,#in g
-                          .5,.5,.5,.5,.5,.5),
+                   #mass=c(.4,.7,.35,.65,.3,.6,#in g
+#                          .5,.5,.5,.5,.5,.5),
                    rmr_b0=c(rep(17.1,6), #b0, b1, b2, b3 are from JAE 2014 eq 6 --
                             rep(16.5,6)), 
                    rmr_b1=c(rep(.98,6), 
@@ -71,19 +86,32 @@ pops <- data.frame(spp=c(rep("MB", 6),
                            .00143, .00269, .00047, .00245, .000491, .00487),
                    #amr_coeff=rep(2, 12), #multiply by rmr to get amr, 2 is a completely made-up value
                    #tpc= #let them be the same for now?
-                   pbt=c(rep(35,6), rep(37,6)), #made-up
+                   #pbt=c(rep(35,6), rep(37,6)), #made-up
                    #behav=c(), #?
-                   start_date_22=as.Date(c("7/1/2022", "7/3/2022", "7/3/2022", "7/5/2022", "7/7/2022", "7/9/2022",
-                                "7/13/2022", "7/15/2022", "7/15/2022", "7/17/2022","7/17/2022", "7/19/2022"), "%m/%d/%Y"), #estimated
-                   end_date_22=as.Date(c("8/1/2022", "8/3/2022", "8/3/2022", "8/5/2022", "8/7/2022", "8/9/2022",
-                                         "8/13/2022", "8/15/2022", "8/15/2022", "8/17/2022","8/17/2022", "8/19/2022"), "%m/%d/%Y"), #even more estimated... actually we'll just give them all a month for simplicity
-                   start_date_23=as.Date(c("7/1/2023", "7/3/2023", "7/3/2023", "7/5/2023", "7/7/2023", "7/9/2023",
-                                           "7/13/2023", "7/15/2023", "7/15/2023", "7/17/2023","7/17/2023", "7/19/2023"), "%m/%d/%Y"), #estimated
-                   end_date_23=as.Date(c(NA, NA, "8/3/2023", "8/5/2023", "8/7/2023", "8/9/2023",
-                                         "8/13/2023", "8/15/2023", "8/15/2023", "8/17/2023","8/17/2023", "8/19/2023"), "%m/%d/%Y")) #even more estimated... actually we'll just give them all a month for simplicity
+                   start_date_22=as.POSIXct(c("6/25/2022", "6/25/2022", "6/27/2022", "6/27/2022", "7/14/2022", "7/14/2022", 
+                                "8/10/2022", "8/10/2022", "8/13/2022", "8/13/2022","8/25/2022", "8/25/2022"), tz="America/Denver", "%m/%d/%Y"), #estimated
+                   end_date_22=as.POSIXct(c("7/25/2022", "7/25/2022", "7/27/2022", "7/27/2022", "8/14/2022", "8/14/2022", 
+                                         "9/10/2022", "9/10/2022", "9/13/2022", "9/13/2022","9/25/2022", "9/25/2022"), , tz="America/Denver", "%m/%d/%Y"), #even more estimated... actually we'll just give them all a month for simplicity
+                   start_date_23=as.POSIXct(c("7/13/2023", "7/13/2023", "7/15/2023", "7/15/2023", "7/17/2023", "7/17/2023",
+                                           "7/24/2023", "7/24/2023", "7/29/2023", "7/29/2023","8/04/2023", "8/04/2023"), , tz="America/Denver", "%m/%d/%Y"), #estimated
+                   end_date_23=as.POSIXct(c("8/13/2023", "8/13/2023", "8/15/2023", "8/15/2023", "8/17/2023", "8/17/2023",
+                                         "8/24/2023", "8/24/2023", "8/29/2023", "8/29/2023","9/04/2023", "9/04/2023"), , tz="America/Denver", "%m/%d/%Y")) #even more estimated... actually we'll just give them all a month for simplicity
 
                    #note: for this example assuming no need for activity/behavior
                    #note: start and end dates could vary year to year (2022, 2023)
+
+m <- merge(pops, p, by=c("site", "sex", "spp"))
+pops <- m
+
+sitesinfo <- data.frame(site=c("Eldo", "A1", "B1", "C1"),
+                    MB_start_date_22=as.POSIXct(c(NA, "6/25/2022", "6/27/2022", "7/14/2022"), tz="America/Denver", "%m/%d/%Y"),
+                    MB_end_date_22=as.POSIXct(c(NA, "7/25/2022", "7/27/2022", "8/14/2022"), tz="America/Denver", "%m/%d/%Y"),
+                    MS_start_date_22=as.POSIXct(c("8/10/2022", "8/13/2022", "8/25/2022", NA), tz="America/Denver", "%m/%d/%Y"),
+                    MS_end_date_22=as.POSIXct(c("9/10/2022", "9/13/2022", "9/25/2022", NA), tz="America/Denver", "%m/%d/%Y"),
+                    MB_start_date_23=as.POSIXct(c(NA, "7/13/2023", "7/15/2023", "7/17/2023"), tz="America/Denver", "%m/%d/%Y"),
+                    MB_end_date_23=as.POSIXct(c(NA, "8/13/2023", "8/15/2023", "8/17/2023"), tz="America/Denver", "%m/%d/%Y"),
+                    MS_start_date_23=as.POSIXct(c("7/24/2023", "7/29/2023", "8/04/2023", NA), tz="America/Denver", "%m/%d/%Y"),
+                    MS_end_date_23=as.POSIXct(c("8/24/2023", "8/29/2023", "9/04/2023", NA), tz="America/Denver", "%m/%d/%Y"))
 
 
 #View(pops)
@@ -341,6 +369,66 @@ get_temps <- function(sitei, start_date, end_date, clim) { #more things potentia
 }
 
 library(TrenchR)
+
+Tb_grasshopper2.5 <- function (T_a, T_g, u, S, K_t, psi, l, Acondfact = 0.25, z = 0.001, 
+          abs = 0.7, r_g = 0.3) 
+{
+  stopifnot(u >= 0, S >= 0, K_t >= 0, K_t <= 1, psi >= -90, 
+            psi <= 90, l >= 0, Acondfact >= 0, Acondfact <= 1, z >= 
+              0, abs >= 0, abs <= 1, r_g >= 0, r_g <= 1)
+  T_a <- celsius_to_kelvin(T_a)
+  T_g <- celsius_to_kelvin(T_g)
+  sigma <- stefan_boltzmann_constant()
+  epsilon <- 1
+  Kf <- 0.025
+  v <- 15.68 * 10^-6
+  c <- l/2
+  a <- (0.365 + 0.241 * l * 1000)/1000
+  e <- sqrt(1 - a^2/c^2)
+  A <- 2 * pi * a^2 + 2 * pi * a * c/e * asin(e)
+  kd <- 1 - 0.09 * K_t
+  kd[K_t > 0.22 & K_t <= 0.8] <- 0.9511 - 0.1604 * K_t + 4.388 * 
+    K_t^2 - 16.638 * K_t^3 + 12.336 * K_t^4
+  kd[K_t > 0.8] <- 0.165
+  Sttl <- S
+  Sdir <- Sttl * (1 - kd)
+  Sdif <- Sttl * kd
+  psi_r <- degrees_to_radians(psi)
+  Re <- u * l/v
+  Nu <- 0.41 * Re^0.5
+  h_c <- Nu * Kf/l
+  hc_s <- h_c * (-0.007 * z/l + 1.71)
+  Thick <- .025
+  hcut <- 0.15
+  Acond <- A * Acondfact
+  sa <- 0.19 - 0.00173 * psi
+  Adir <- A * sa
+  Aref <- Adir
+  Qdir <- abs * Adir * Sdir/cos(psi_r)
+  Qdif <- abs * Aref * Sdif
+  Qref <- r_g * Aref * Sttl
+  Qabs <- Qdir + Qdif + Qref
+  T_sky <- 0.0552 * (T_a)^1.5
+  a <- A * epsilon * sigma
+  b <- hc_s * A + hcut * Acond/Thick
+  d <- hc_s * A * T_a + 0.5 * A * epsilon * sigma * (T_sky^4 + 
+                                                       T_g^4) + hcut * Acond * T_g/Thick + Qabs
+  T_b <- 1/2 * sqrt((2 * b)/(a * sqrt((sqrt(3) * sqrt(256 * 
+                                                        a^3 * d^3 + 27 * a^2 * b^4) + 9 * a * b^2)^(1/3)/(2^(1/3) * 
+                                                                                                            3^(2/3) * a) - (4 * (2/3)^(1/3) * d)/(sqrt(3) * sqrt(256 * 
+                                                                                                                                                                   a^3 * d^3 + 27 * a^2 * b^4) + 9 * a * b^2)^(1/3))) - 
+                      (sqrt(3) * sqrt(256 * a^3 * d^3 + 27 * a^2 * b^4) + 
+                         9 * a * b^2)^(1/3)/(2^(1/3) * 3^(2/3) * a) + (4 * 
+                                                                         (2/3)^(1/3) * d)/(sqrt(3) * sqrt(256 * a^3 * d^3 + 27 * 
+                                                                                                            a^2 * b^4) + 9 * a * b^2)^(1/3)) - 1/2 * sqrt((sqrt(3) * 
+                                                                                                                                                             sqrt(256 * a^3 * d^3 + 27 * a^2 * b^4) + 9 * a * b^2)^(1/3)/(2^(1/3) * 
+                                                                                                                                                                                                                            3^(2/3) * a) - (4 * (2/3)^(1/3) * d)/(sqrt(3) * sqrt(256 * 
+                                                                                                                                                                                                                                                                                   a^3 * d^3 + 27 * a^2 * b^4) + 9 * a * b^2)^(1/3))
+  T_b[which(is.na(T_b))] <- NA
+  kelvin_to_celsius(T_b)
+}
+
+
 C1wsprofile <- read_csv("C1_2022_surfroughness_mod.csv")
 wslow <- mean(C1wsprofile$windspeed1)
 wsmed <- mean(C1wsprofile$windspeed2)
@@ -374,89 +462,93 @@ get_psi <- function(dt, site){
 clim <- clim %>% rowwise() %>% mutate(psi=get_psi(dtuse, site))
 
 
-clim2 <- clim %>% rowwise() %>%
-  mutate(bTbsoilsun_.01=Tb_grasshopper(
-    T_a=air_temp_profile_neutral(T_r = T_1.00use,
-                                 zr  = 1,
-                                 z0  = surf,
-                                 z   = .001, # .001, #had .01 at some point
-                                 T_s = T_soilest), #not positive abt T_s
-    T_g=T_soilest, #air, #soil, #ground temp
-    u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .001), #wind speed... needs work #.001 -- make wsuse=0 -> .001
-    S=ifelse(psi!=90 & psi!= -90, sruse, 0), #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
-    K_t=.7, #clearness index (???)... needs work, but for now just guessing
-    psi=psi, #solar zenith angle... needs work
-    l=.03, #grasshopper length, rn just guessing 3cm and not varying
-    Acondfact=0.01 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
-  )) %>%
-  mutate(bTbsoilshade_.01=Tb_grasshopper(
-    T_a=air_temp_profile_neutral(T_r = T_1.00use,
-                                 zr  = 1,
-                                 z0  = surf,
-                                 z   = .001, # .001, #had .01 at some point
-                                 T_s = T_soilest), #not positive abt T_s
-    T_g=T_soilest, #air, #soil, #ground temp
-    u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .001), #wind speed... needs work #.001 -- make wsuse=0 -> .001
-    S=0, #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
-    K_t=.7, #clearness index (???)... needs work, but for now just guessing
-    psi=psi, #solar zenith angle... needs work
-    l=.03, #grasshopper length, rn just guessing 3cm and not varying
-    Acondfact=0.01 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
-  )) %>%
-  mutate(bTbcagesun=Tb_grasshopper(
-    T_a=air_temp_profile_neutral(T_r = T_1.00use,
-                                 zr  = 0.25,
-                                 z0  = surf,
-                                 z   = .3, # .001, #had .01 at some point
-                                 T_s = T_soilest), #not positive abt T_s
-    T_g=T_soilest, #air, #soil, #ground temp
-    u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .3), #wind speed... needs work #.001 -- make wsuse=0 -> .001
-    S=ifelse(psi!=90 & psi!= -90, sruse, 0), #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
-    K_t=.7, #clearness index (???)... needs work, but for now just guessing
-    psi=psi, #solar zenith angle... needs work
-    l=.03, #grasshopper length, rn just guessing 3cm and not varying
-    Acondfact=0 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
-  )) %>%
-  mutate(bTbcageshade=Tb_grasshopper(
-    T_a=air_temp_profile_neutral(T_r = T_1.00use,
-                                 zr  = 0.25,
-                                 z0  = surf,
-                                 z   = .3, # .001, #had .01 at some point
-                                 T_s = T_soilest), #not positive abt T_s
-    T_g=T_soilest, #air, #soil, #ground temp
-    u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .3), #wind speed... needs work #.001 -- make wsuse=0 -> .001
-    S=0, #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
-    K_t=.7, #clearness index (???)... needs work, but for now just guessing
-    psi=psi, #solar zenith angle... needs work
-    l=.03, #grasshopper length, rn just guessing 3cm and not varying
-    Acondfact=0 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
-  )) %>% mutate(altTb= Tb_grasshopper(
-  T_a=air_temp_profile_neutral(T_r = T_1.00use,
-                               zr  = 0.25,
-                               z0  = surf,
-                               z   = .01, # .001, #had .01 at some point
-                               T_s = T_soilest), #not positive abt T_s
-  T_g=T_soilest, #air, #soil, #ground temp
-  u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .01), #wind speed... needs work #.001 -- make wsuse=0 -> .001
-  S=ifelse(psi!=90 & psi!= -90, sruse, 0), #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
-  K_t=.7, #clearness index (???)... needs work, but for now just guessing
-  psi=psi, #solar zenith angle... needs work
-  l=.03, #grasshopper length, rn just guessing 3cm and not varying
-  Acondfact=.05 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
-))
+ex_clim <- clim %>% filter((dtuse>=as.POSIXct("2022-06-25 00:00", tz="America/Denver") & dtuse<=as.POSIXct("2022-08-26 00:00", tz="America/Denver")) |
+                             (dtuse>=as.POSIXct("2023-06-23 00:00", tz="America/Denver") & dtuse<=as.POSIXct("2023-09-10 00:00", tz="America/Denver")))
+
+#probably do the below on with 10-90% sunlight exposure
+# clim2 <- ex_clim %>% rowwise() %>%
+#   mutate(bTbsoilsun_.01=Tb_grasshopper2.5(
+#     T_a=air_temp_profile_neutral(T_r = T_1.00use,
+#                                  zr  = 1,
+#                                  z0  = surf,
+#                                  z   = .001, # .001, #had .01 at some point
+#                                  T_s = T_soilest), #not positive abt T_s
+#     T_g=T_soilest, #air, #soil, #ground temp
+#     u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .001), #wind speed... needs work #.001 -- make wsuse=0 -> .001
+#     S=ifelse(psi!=90 & psi!= -90, sruse, 0), #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
+#     K_t=.7, #clearness index (???)... needs work, but for now just guessing
+#     psi=psi, #solar zenith angle... needs work
+#     l=.03, #grasshopper length, rn just guessing 3cm and not varying
+#     Acondfact=0.25 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
+#   )) %>%
+#   mutate(bTbsoilshade_.01=Tb_grasshopper2.5(
+#     T_a=air_temp_profile_neutral(T_r = T_1.00use,
+#                                  zr  = 1,
+#                                  z0  = surf,
+#                                  z   = .001, # .001, #had .01 at some point
+#                                  T_s = T_soilest), #not positive abt T_s
+#     T_g=T_soilest, #air, #soil, #ground temp
+#     u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .001), #wind speed... needs work #.001 -- make wsuse=0 -> .001
+#     S=0, #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
+#     K_t=.7, #clearness index (???)... needs work, but for now just guessing
+#     psi=psi, #solar zenith angle... needs work
+#     l=.03, #grasshopper length, rn just guessing 3cm and not varying
+#     Acondfact=0.25 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
+#   )) %>%
+#   mutate(bTbcagesun=Tb_grasshopper2.5(
+#     T_a=air_temp_profile_neutral(T_r = T_1.00use,
+#                                  zr  = 0.25,
+#                                  z0  = surf,
+#                                  z   = .3, # .001, #had .01 at some point
+#                                  T_s = T_soilest), #not positive abt T_s
+#     T_g=T_soilest, #air, #soil, #ground temp
+#     u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .3), #wind speed... needs work #.001 -- make wsuse=0 -> .001
+#     S=ifelse(psi!=90 & psi!= -90, sruse, 0), #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
+#     K_t=.7, #clearness index (???)... needs work, but for now just guessing
+#     psi=psi, #solar zenith angle... needs work
+#     l=.03, #grasshopper length, rn just guessing 3cm and not varying
+#     Acondfact=0 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
+#   )) %>%
+#   mutate(bTbcageshade=Tb_grasshopper2.5(
+#     T_a=air_temp_profile_neutral(T_r = T_1.00use,
+#                                  zr  = 0.25,
+#                                  z0  = surf,
+#                                  z   = .3, # .001, #had .01 at some point
+#                                  T_s = T_soilest), #not positive abt T_s
+#     T_g=T_soilest, #air, #soil, #ground temp
+#     u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .3), #wind speed... needs work #.001 -- make wsuse=0 -> .001
+#     S=0, #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
+#     K_t=.7, #clearness index (???)... needs work, but for now just guessing
+#     psi=psi, #solar zenith angle... needs work
+#     l=.03, #grasshopper length, rn just guessing 3cm and not varying
+#     Acondfact=0 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
+#   )) #%>% mutate(altTb= Tb_grasshopper(
+# #   T_a=air_temp_profile_neutral(T_r = T_1.00use,
+# #                                zr  = 0.25,
+# #                                z0  = surf,
+# #                                z   = .01, # .001, #had .01 at some point
+# #                                T_s = T_soilest), #not positive abt T_s
+# #   T_g=T_soilest, #air, #soil, #ground temp
+# #   u=wind_speed_profile_neutral(ifelse(wsuse==0, .001, wsuse), 1, surf, .01), #wind speed... needs work #.001 -- make wsuse=0 -> .001
+# #   S=ifelse(psi!=90 & psi!= -90, sruse, 0), #solar radiation CHANGED FROM S to H since tutorial  sensor WATTS/SQM... see about correcting for area exposed
+# #   K_t=.7, #clearness index (???)... needs work, but for now just guessing
+# #   psi=psi, #solar zenith angle... needs work
+# #   l=.03, #grasshopper length, rn just guessing 3cm and not varying
+# #   Acondfact=.05 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
+# # ))
 
 clim2long <- clim2 %>% pivot_longer(cols=c(Tbsoilsun, Tbsoilshade, Tbcagesun, Tbcageshade, T_1.00use), names_to="meas", values_to="vals")
 
-#isolate just the date from a datetime
-clim2long <- clim2long %>% mutate(dtuse=as.Date(dtuse))
+#isolate just the date from a datetime.. not sure why this was here
+#clim2long <- clim2long %>% mutate(dtuse=as.Date(dtuse))
 
 
 #use ggplot to plot distributions of each body temperature (the columns I just created, plus T_1.00use)
 ggplot(clim2long, aes(x=vals, color=meas)) + geom_density() + facet_wrap(~site)
 
 #make a plot of the body temperatures over time on 7/18/2022 over the course of the day
-clim2_7_18 <- clim2long %>% filter(as.Date(dtuse)=="2022-07-18") #doesn't work because of the times
-
+clim2_7_18 <- clim2long %>% filter(dtuse>="2022-07-18" &dtuse<="2022-07-19") #doesn't work because of the times
+ggplot(clim2_7_18, aes(x=as.POSIXct(dtuse), y=vals, color=meas)) + geom_line() + facet_wrap(~site)
 
 library(scales)
 library(lubridate)
@@ -474,8 +566,8 @@ ggplot(clim2_7_18, aes(x=dtuse, y=vals, color=meas)) +
   facet_wrap(~site)
 
 #for the moment, let's do a range of 10%-90% sunlight and have cage and soil
-clim2 <- clim %>% rowwise() %>%
-  mutate(Tbsoilsun=Tb_grasshopper(
+clim2 <- ex_clim %>% rowwise() %>%
+  mutate(Tbsoilsun=Tb_grasshopper2.5(
     T_a=air_temp_profile_neutral(T_r = T_1.00use,
                                  zr  = 1,
                                  z0  = surf,
@@ -490,7 +582,7 @@ clim2 <- clim %>% rowwise() %>%
     z=.025,
     Acondfact=0.25 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
   )) %>%
-  mutate(Tbsoilshade=Tb_grasshopper(
+  mutate(Tbsoilshade=Tb_grasshopper2.5(
     T_a=air_temp_profile_neutral(T_r = T_1.00use,
                                  zr  = 1,
                                  z0  = surf,
@@ -505,7 +597,7 @@ clim2 <- clim %>% rowwise() %>%
     z=.025,
     Acondfact=0.25 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
   )) %>%
-  mutate(Tbcagesun=Tb_grasshopper(
+  mutate(Tbcagesun=Tb_grasshopper2.5(
     T_a=air_temp_profile_neutral(T_r = T_1.00use,
                                  zr  = 1,
                                  z0  = surf,
@@ -520,7 +612,7 @@ clim2 <- clim %>% rowwise() %>%
     z=.325,
     Acondfact=0 #0.25 -> 0 made a huge difference... but at 0 sruse takes over and get really hot tbs
   )) %>%
-  mutate(Tbcageshade=Tb_grasshopper(
+  mutate(Tbcageshade=Tb_grasshopper2.5(
     T_a=air_temp_profile_neutral(T_r = T_1.00use,
                                  zr  = 1,
                                  z0  = surf,
@@ -539,6 +631,7 @@ clim2 <- clim %>% rowwise() %>%
 #now we want to run through dates with Tb estimates
 #note -- this is written inefficiently... don't need to recalculate body temperatures (yet!) for the same site
 #tho in principle different sizes and colors could matter slightly
+#but I don't think this is the part that takes super long anyway
 
 
 dall2 <- data.frame(tbs=NA, tbtype=NA, dtuse=NA, meas=NA, vals=NA, spp=NA, site=NA, sex=NA)
@@ -557,7 +650,7 @@ for(p in 1:12){ #can show 1:12
   
 }
 
-for(p in c(3:8, 11:12)){ #can show 1:12 #c(3:8, 11:12) generally -- had to do a weird thing
+for(p in c(1:12)){ #can show 1:12 #c(3:8, 11:12) generally -- had to do a weird thing
   dth <- data.frame(gains=NA, losses=NA, net_gains=NA, tbs=NA, tbtype=NA, dtuse=NA)
   for(tb in tbs) {
     dthing <- pop_energy_complex(pops[p,]$spp,pops[p,]$site,pops[p,]$sex, pops[p,]$start_date_23, pops[p,]$end_date_23, pops, clim, tb)    
@@ -587,11 +680,11 @@ process_pop_year <- function(p, year) {
     if (year == 22) {
       dthing <- pop_energy_complex(pops[p,]$spp, pops[p,]$site, pops[p,]$sex, 
                                    pops[p,]$start_date_22, pops[p,]$end_date_22, 
-                                   pops, clim, tb)
+                                   pops, clim2, tb)
     } else {
       dthing <- pop_energy_complex(pops[p,]$spp, pops[p,]$site, pops[p,]$sex, 
                                    pops[p,]$start_date_23, pops[p,]$end_date_23, 
-                                   pops, clim, tb)
+                                   pops, clim2, tb)
     }
     dthing$tbtype <- tb
     return(dthing)
@@ -608,7 +701,7 @@ process_pop_year <- function(p, year) {
 all_results <- c(all_results, map(1:12, ~process_pop_year(.x, 22)))
 
 # Process 2023 data
-all_results <- c(all_results, map(c(3:8, 11:12), ~process_pop_year(.x, 23)))
+all_results <- c(all_results, map(1:12, ~process_pop_year(.x, 23)))
 
 # Combine all results
 dall2 <- bind_rows(all_results)

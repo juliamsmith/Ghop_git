@@ -209,7 +209,7 @@ hydroS <- hydroS[complete.cases(hydroS[ ,17:20]), ]
 
 hydroS$dt <- as.POSIXct(hydroS$dt) #this time it is changing the time... that is
 
-#trim to relevant range for our field seasons
+#trim to relevant range for our field seasons 
 hydroS <- hydroS %>% filter((dt>as.POSIXct("2022-05-15 16:30:00") & dt<as.POSIXct("2022-10-01 12:21:00")) | 
                               (dt>as.POSIXct("2023-05-15 16:30:00") & dt<as.POSIXct("2023-10-01 12:21:00")))
 
@@ -302,6 +302,46 @@ dlter$dt <- dlter$dt + 60*60 #TIMEZONE not sure why, but it seems this correctio
 #uncommenting for now... removing some patchy/unreliable entries
 dlter <- dlter %>% filter(dt<as.POSIXct("2023-09-03 11:40:00", tz="America/Denver")) #changed from 5:20... not sure why it was there before?
 
+# TEST HOW THINGS LINE UP ####
+
+ggplot(all %>% filter(site=="Eldo" &
+                        dt>as.POSIXct("2022-07-03 00:00", tz="America/Denver") &
+                        dt<as.POSIXct("2022-07-03 23:59", tz="America/Denver")),
+       aes(x=dt, y=sr)) +
+  geom_line()
+
+ggplot(nrel %>% filter(dt>as.POSIXct("2022-07-03 00:00", tz="America/Denver") &
+                        dt<as.POSIXct("2022-07-03 23:59", tz="America/Denver")),
+       aes(x=dt, y=sr)) +
+  geom_line()
+
+#eldo / nrel has a good match (sunrise ~6, sunset ~9)
+
+ggplot(all %>% filter(site=="B1" &
+                        dt>as.POSIXct("2022-07-03 00:00", tz="America/Denver") &
+                        dt<as.POSIXct("2022-07-03 23:59", tz="America/Denver")),
+       aes(x=dt, y=sr)) +
+  geom_line()
+
+ggplot(hydroS %>% filter(dt>as.POSIXct("2022-07-03 00:00", tz="America/Denver") &
+                         dt<as.POSIXct("2022-07-03 23:59", tz="America/Denver")),
+       aes(x=dt, y=sr)) +
+  geom_line()
+
+#same for B1 / hydro
+
+ggplot(all %>% filter(site=="C1" &
+                        dt>as.POSIXct("2022-07-03 00:00", tz="America/Denver") &
+                        dt<as.POSIXct("2022-07-03 23:59", tz="America/Denver")),
+       aes(x=dt, y=sr)) +
+  geom_line()
+
+ggplot(dlter %>% filter(dt>as.POSIXct("2022-07-03 00:00", tz="America/Denver") &
+                         dt<as.POSIXct("2022-07-03 23:59", tz="America/Denver")),
+       aes(x=dt, y=sr)) +
+  geom_line()
+
+#and C1 / dlter
 
 # MERGE DATA AND MODEL ####
 
@@ -340,9 +380,11 @@ gap_inds <- which(diff(Eldobind$dt)>20)
 #the first one is the gap between the 2022 and 2023 field season
 
 #handling the three predictable gaps (beginnings and ends of seasons)
-edgesnrel_src<- nrel_src %>% filter((dt_src>"2022-05-15 00:00:01" & dt_src < Eldobind$dt[1]-5) |
+edgesnrel_src<- nrel_src %>% filter((dt_src>as.POSIXct("2022-05-15 00:00:01", tz="America/Denver") & 
+                                       dt_src < Eldobind$dt[1]-5*60) |
                      # (dt_src>Eldobind$dt[gap_inds[1]]+5 & dt_src<Eldobind$dt[gap_inds[1]+1]-5) |
-                      (dt_src> Eldobind$dt[length(Eldobind$dt)] +5 & dt_src<"2023-10-01 00:00:01"))
+                      (dt_src> Eldobind$dt[length(Eldobind$dt)] +5*60 & 
+                         dt_src<as.POSIXct("2023-10-01 00:00:01", tz="America/Denver")))
 
 #handling the rest in a for loop... oops not quite how it works since I've already pared it down too much
 #make a list of conditions
@@ -376,7 +418,7 @@ summary(modTEldo)
 Eldobinds <- Eldobinds  %>% mutate(T_1.00pred = T_2.00_src*modTEldo$coefficients[2] + modTEldo$coefficients[1],
                                          T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
                                          T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
-                                         dtuse = as.POSIXct(ifelse(is.na(T_1.00), dt_src, dt))) #could also create a column that's a measurement of error
+                                         dtuse = as.POSIXct(ifelse(is.na(T_1.00), dt_src, dt), tz="America/Denver")) #could also create a column that's a measurement of error
 
 
 Eldobinds <- unique(Eldobinds)
@@ -509,9 +551,9 @@ gap_inds <- which(diff(B1bind$dt)>20)
 #the first one is the gap between the 2022 and 2023 field season
 
 #handling the three predictable gaps (beginnings and ends of seasons)
-edgeshy_src<- hy_src %>% filter((dt_src>"2022-05-15 00:00:01" & dt_src < B1bind$dt[1]-5) |
+edgeshy_src<- hy_src %>% filter((dt_src>as.POSIXct("2022-05-15 00:00:01", tz="America/Denver") & dt_src < B1bind$dt[1]-5*60) |
                                       #(dt_src>B1bind$dt[gap_inds[2]]+5 & dt_src<"2023-05-15 00:00:01") |
-                                      (dt_src> B1bind$dt[length(B1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01"))
+                                      (dt_src> B1bind$dt[length(B1bind$dt)] +5*60 & dt_src<as.POSIXct("2023-10-01 00:00:01", tz="America/Denver")))
 
 #handling the rest in a for loop
 #make a list of conditions
@@ -688,9 +730,9 @@ gap_inds <- which(diff(C1bind$dt)>20)
 #the last several are on 8/03 where there's patchy cover
 
 #handling the three predictable gaps (beginnings and ends of seasons)
-edgeslter_src<- lter_src %>% filter((dt_src>"2022-05-15 00:00:01" & dt_src < C1bind$dt[1]-5) |
+edgeslter_src<- lter_src %>% filter((dt_src>as.POSIXct("2022-05-15 00:00:01", tz="America/Denver") & dt_src < C1bind$dt[1]-5*60) |
                                      # (dt_src>C1bind$dt[gap_inds[1]]+5 & dt_src<"2022-05-15 00:00:01") |
-                                      (dt_src> C1bind$dt[length(C1bind$dt)] +5 & dt_src<"2023-10-01 00:00:01"))
+                                      (dt_src> C1bind$dt[length(C1bind$dt)] +5*60 & dt_src<as.POSIXct("2023-10-01 00:00:01", tz="America/Denver")))
 
 #handling the rest in a for loop
 #make a list of conditions
@@ -873,55 +915,272 @@ C1binds <- C1binds %>% select(-Group.1, -srextrapred, -sruseEl, -sruseB1, -T_soi
 
 C1binds$site <- "C1"
 
+
+
+# BIND SITES ####
+climateuse <- plyr::rbind.fill(Eldobinds, B1binds, C1binds) #A1
+
+climateuse$T_soilori = "modelled"
+
+#climateuse$dt_noyr <- climateuse$dtuse 
+#year(climateuse$dt_noyr) <- 2024
+
+# HANDLE ADDITIONAL A1 MODELLING ####
 ## A1 2022 soil temperature ####
 
 A1 <- all %>% filter(site=="A1") 
 
-A1 <- A1 %>% mutate(dtuse=dt, sruse=sr, wsuse=ws, T_1.00use=T_1.00, 
-                    srori = "direct", wsori = "direct", T_1.00ori = "direct")
+#for 2022 we are set... no particular gaps, although we could fill in early dts
+A1 <- A1 %>% mutate(dtuse=dt, sruse=sr, wsuse=.5, T_1.00use=T_1.00, 
+                    srori = "direct", wsori = "modelled", T_1.00ori = "direct")
 
-A1$T_soilest <- soil_temperature(
+
+
+
+clim <- climateuse
+
+A1clim <- A1
+#A1clim <- clim %>% filter(site=="A1")
+B1clim <- clim %>% filter(site=="B1")
+C1clim <- clim %>% filter(site=="C1")
+Eldoclim <- clim %>% filter(site=="Eldo")
+
+
+#Do it for B1
+A1ints <- as.integer(A1clim$dtuse)
+B1ints <- as.integer(B1clim$dtuse)
+
+B1matchinds <-lapply(A1ints, FUN=function(x){
+  return(which.min(abs(B1ints-x)))
+})
+
+
+indsvec <- rep(NA,length(B1matchinds))
+for(i in 1:length(B1matchinds)){ indsvec[i] = B1matchinds[[i]]}
+
+A1 <- A1clim %>% select(dtuse, sruse, T_1.00use)
+B1 <- B1clim %>% rename(B1dt="dtuse", B1sr="sruse", B1T_1.00="T_1.00use")
+B1 <- B1 %>% select(B1dt, B1sr, B1T_1.00)
+
+A1predbind <- cbind(A1, B1[indsvec,])
+
+
+#Do the very same thing for Eldo
+Eldoints <- as.integer(Eldoclim$dtuse)
+
+Eldomatchinds <- lapply(A1ints, FUN=function(x){
+  return(which.min(abs(Eldoints-x)))
+})
+
+indsvec <- rep(NA,length(Eldomatchinds))
+for(i in 1:length(Eldomatchinds)){ indsvec[i] = Eldomatchinds[[i]]}
+
+Eldo <- Eldoclim %>% rename(Eldodt="dtuse", Eldosr="sruse", EldoT_1.00="T_1.00use")
+Eldo <- Eldo %>% select(Eldodt, Eldosr, EldoT_1.00)
+
+A1predbind <- cbind(A1predbind, Eldo[indsvec,])
+
+
+#Do the very same thing for C1
+C1ints <- as.integer(C1clim$dtuse)
+
+C1matchinds <- lapply(A1ints, FUN=function(x){
+  return(which.min(abs(C1ints-x)))
+})
+
+indsvec <- rep(NA,length(C1matchinds))
+for(i in 1:length(C1matchinds)){ indsvec[i] = C1matchinds[[i]]}
+
+C1 <- C1clim %>% rename(C1dt="dtuse", C1sr="sruse", C1T_1.00="T_1.00use")
+C1 <- C1 %>% select(C1dt, C1sr, C1T_1.00)
+
+A1predbind <- cbind(A1predbind, C1[indsvec,])
+
+Tmod <- lm(T_1.00use ~ B1T_1.00 + EldoT_1.00 + C1T_1.00, data=A1predbind)
+summary(Tmod)
+
+
+
+#now make a new df where we match everything to B1 values
+
+#Do it for C1
+B1ints <- as.integer(B1clim$dtuse)
+C1ints <- as.integer(C1clim$dtuse)
+
+C1matchinds <- lapply(B1ints, FUN=function(x){
+  return(which.min(abs(C1ints-x)))
+})
+
+indsvec <- rep(NA,length(C1matchinds))
+for(i in 1:length(C1matchinds)){ indsvec[i] = C1matchinds[[i]]}
+
+B1 <- B1clim %>% rename(B1dt="dtuse", B1sr="sruse", B1T_1.00="T_1.00use")
+B1 <- B1 %>% select(B1dt, B1sr, B1T_1.00)
+C1 <- C1clim %>% rename(C1dt="dtuse", C1T_1.00="T_1.00use")
+C1 <- C1 %>% select(C1dt, C1T_1.00)
+
+A1predbindlarger <- cbind(B1, C1[indsvec,])
+
+#Do the very same thing for Eldo
+Eldoints <- as.integer(Eldoclim$dtuse)
+
+Eldomatchinds <- lapply(B1ints, FUN=function(x){
+  return(which.min(abs(Eldoints-x)))
+})
+
+indsvec <- rep(NA,length(Eldomatchinds))
+for(i in 1:length(Eldomatchinds)){ indsvec[i] = Eldomatchinds[[i]]}
+
+Eldo <- Eldoclim %>% rename(Eldodt="dtuse", EldoT_1.00="T_1.00use")
+Eldo <- Eldo %>% select(Eldodt, EldoT_1.00)
+
+A1predbindlarger <- cbind(A1predbindlarger, Eldo[indsvec,])
+
+A1predbindlarger <- A1predbindlarger %>% 
+  mutate(T_1.00pred=
+           Tmod$coefficients[1]+ 
+           Tmod$coefficients[2]*B1T_1.00+
+           Tmod$coefficients[3]*EldoT_1.00+
+           Tmod$coefficients[4]*C1T_1.00,
+         srpred=B1sr)
+
+#now go through and insert this in, saving other parts to tack on
+
+#A1 <- all %>% filter(site=="A1")
+
+A1ints <- as.integer(A1clim$dtuse)
+A1pints <- as.integer(A1predbindlarger$B1dt)
+
+A1pmatchinds <-lapply(A1ints, FUN=function(x){
+  return(which.min(abs(A1pints-x)))
+})
+
+
+#added T_soil thing... but could maybe also just remove that column
+#lter_src <- dlter %>% rename(dt_src="dt", ws_9_src="ws_9", T_1.7_src="T_1.7", sr_src="sr", T_soil_src="T_soil") 
+
+
+indsvec <- rep(NA,length(A1pmatchinds))
+for(i in 1:length(A1pmatchinds)){ indsvec[i] = A1pmatchinds[[i]]}
+
+A1clim$T_1.00pred <- A1predbindlarger$T_1.00pred[indsvec]
+A1clim$dt_src <- A1predbindlarger$B1dt[indsvec]
+A1clim$srpred <- A1predbindlarger$B1sr[indsvec]
+
+
+
+# A1predtomatch <- A1predbindlarger %>% filter(B1dt>"2022-06-03 10:35:00" &
+#                                                B1dt>"2022-09-20 15:12:00")
+A1predextras <- A1predbindlarger %>% filter(B1dt<as.POSIXct("2022-06-03 10:35:00", tz="America/Denver") | #result is 11:35... hmm
+                                          B1dt > as.POSIXct("2022-09-20 15:12:00", tz="America/Denver"))
+
+
+A1predextras <- A1predextras %>% rename(dt_src="B1dt") %>% select(dt_src, srpred, T_1.00pred)
+
+
+
+
+#add in modeled values to fill gaps in time
+A1binds <- plyr::rbind.fill(A1clim, A1predextras) 
+
+
+A1binds <- A1binds  %>% mutate(T_1.00use = ifelse(is.na(T_1.00), T_1.00pred, T_1.00),
+                               T_1.00ori = ifelse(is.na(T_1.00), "modelled", "direct"),
+                               dtuse = as.POSIXct(ifelse(is.na(T_1.00), dt_src, dt), tz="America/Denver"),
+                               sruse = ifelse(is.na(sr), srpred, sr),
+                               srori = ifelse(is.na(sr), "modelled", "direct"),
+                               wspred = .5,
+                               wsuse = .5,
+                               wsori = "modelled")
+
+
+Ab22 <- A1binds %>% filter(year(dtuse)==2022)
+
+thing <- soil_temperature(
   z_r.intervals = 12,
   z_r=1,
   z=2, #what do the intervals mean?
-  T_a=A1$T_1.00use,
-  u=A1$wsuse,
-  Tsoil0=A1$T_1.00use[1], # have to create this as a var... or just make up a #
+  T_a=Ab22$T_1.00use,
+  u=Ab22$wsuse,
+  Tsoil0=Ab22$T_1.00use[1], # have to create this as a var... or just make up a #
   z0=surf_r,
   SSA=.7, #guess
-  TimeIn=hour(A1$dtuse),
-  S=A1$sruse,
+  TimeIn=hour(Ab22$dtuse),
+  S=Ab22$sruse,
   water_content = 0.2, #.2 here
   air_pressure=mean(hydroS$`BAROMETRIC PRESS(MBAR)`)/10, #same as B1 for now
   rho_so = 1620,
   shade = TRUE
 )
 
-A1_old <- A1
+Ab22$T_soilest <- thing
+Ab22$T_soilest <- soil_temperature(
+  z_r.intervals = 12,
+  z_r=1,
+  z=2, #what do the intervals mean?
+  T_a=Ab22$T_1.00use,
+  u=Ab22$wsuse,
+  Tsoil0=Ab22$T_1.00use[1], # have to create this as a var... or just make up a #
+  z0=surf_r,
+  SSA=.7, #guess
+  TimeIn=hour(Ab22$dtuse),
+  S=Ab22$sruse,
+  water_content = 0.2, #.2 here
+  air_pressure=mean(hydroS$`BAROMETRIC PRESS(MBAR)`)/10, #same as B1 for now
+  rho_so = 1620,
+  shade = TRUE
+)
 
-A1 <- A1 %>% select(-Group.1)
+Ab23 <- A1binds %>% filter(year(dtuse)==2023) 
 
 
 
-# BIND SITES ####
-climateuse <- plyr::rbind.fill(Eldobinds, A1, B1binds, C1binds)
+Ab23$T_soilest <- soil_temperature(
+  z_r.intervals = 12,
+  z_r=1,
+  z=2, #what do the intervals mean?
+  T_a=Ab23$T_1.00use,
+  u=Ab23$wsuse,
+  Tsoil0=Ab23$T_1.00use[1], # have to create this as a var... or just make up a #
+  z0=surf_r,
+  SSA=.7, #guess
+  TimeIn=hour(Ab23$dtuse),
+  S=Ab23$sruse,
+  water_content = 0.2, #.2 here
+  air_pressure=mean(hydroS$`BAROMETRIC PRESS(MBAR)`)/10, #same as B1 for now
+  rho_so = 1620,
+  shade = TRUE
+)
 
-climateuse$T_soilori = "modelled"
+A1binds <- plyr::rbind.fill(Ab22, Ab23)#, Cb23extras)
 
-climateuse$dt_noyr <- climateuse$dtuse
-year(climateuse$dt_noyr) <- 2024
+A1binds_old <- A1binds
+
+A1binds <- A1binds %>% select(-Group.1)
+
+A1binds$site <- "A1"
+
+A1binds$T_soilori <- "modelled"
+
+climateuse2 <- plyr::rbind.fill(climateuse, A1binds) #A1
+
+climateuse2$dt_noyr <- climateuse2$dtuse
+
+year(climateuse2$dt_noyr) <- 2024
+
+# SAVE AND VISUALIZE ####
 
 ## and save it as a csv and/or Rda ####
-write.csv(climateuse, "climateuse.csv")
+write.csv(climateuse2, "climateuse2.csv")
 
-saveRDS(climateuse, "climateuse.rds")
+saveRDS(climateuse2, "climateuse2.rds")
 
 ## celebratory plot of all the data now without gaps ####
 #(not showing what's infilled here but we'll zoom in later)
 
 
 coeff=30
-ggplot(climateuse, aes(x=dt_noyr)) + 
+ggplot(climateuse2, aes(x=dt_noyr)) + 
   geom_line(aes(y=T_1.00use, color="Air temp")) + 
   geom_line(aes(y=T_soilest, color = "Soil temp")) +
   geom_line(aes(y=wsuse, color="Wind speed")) +
