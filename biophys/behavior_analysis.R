@@ -226,9 +226,9 @@ ggplot(fdTlb, aes(x=airtemp, fill=Activity2)) +
 
 
 #combining with past data (using air temps at 1m)
-d_all <- readRDS("biophys/pairedcagewsbothyrs.RDS") 
-d_all <- d_all %>% filter(!is.na(Activity))
-d_all_lumped <- d_all %>% mutate(Activity2=dplyr::recode(Activity, WALK="MOVE", CLMB="MOVE"))
+d_allold <- readRDS("biophys/pairedcagewsbothyrs.RDS") 
+d_allold <- d_allold %>% filter(!is.na(Activity))
+d_all_lumped <- d_allold %>% mutate(Activity2=dplyr::recode(Activity, WALK="MOVE", CLMB="MOVE"))
 
 
 dalb <- d_all_lumped %>% mutate(airtemp = 
